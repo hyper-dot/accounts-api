@@ -1,15 +1,13 @@
-import express from "express";
 import { db } from "../../db";
+import { Request, Response } from "express";
 import { insertJournalEntry } from "../../db/service";
 
-const router = express.Router();
-
-router.get("/", async (req, res) => {
+export async function getAllInvoices(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM invoice");
   res.json(rows);
-});
+}
 
-router.get("/:vendor_id", async (req, res) => {
+export async function getInvoicesByVendorId(req: Request, res: Response) {
   const vendorId = req.params.vendor_id;
   try {
     const rows = await db.all("SELECT * FROM invoice WHERE vendor_id = ?", [
@@ -19,9 +17,9 @@ router.get("/:vendor_id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-router.post("/:vendor_id", async (req, res) => {
+export async function createInvoice(req: Request, res: Response) {
   const { description, issued_date, amount, service_date } = req.body;
   const vendorId = req.params.vendor_id;
 
@@ -69,9 +67,10 @@ router.post("/:vendor_id", async (req, res) => {
       transaction_id,
       account: "Cash Account",
       amount: ACTUAL_AMOUNT,
-      type: "CREDIT",
       description,
       invoice_id,
+      category: "ASSET",
+      entry_type: "CREDIT",
     });
 
     // Expense account debit
@@ -80,14 +79,13 @@ router.post("/:vendor_id", async (req, res) => {
       transaction_id,
       account: "Expense Account",
       amount: ACTUAL_AMOUNT,
-      type: "DEBIT",
+      entry_type: "DEBIT",
       description,
       invoice_id,
+      category: "EXPENSE",
     });
     res.json({ message: "Inserted invoice successfully !!" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-export default router;
+}

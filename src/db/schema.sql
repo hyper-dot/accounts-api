@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS journal_entry (
   date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   account TEXT NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('DEBIT', 'CREDIT')),
+  entry_type TEXT NOT NULL CHECK (entry_type IN ('DEBIT', 'CREDIT')),
+  category TEXT NOT NULL CHECK (category IN ('REVENUE', 'EXPENSE', 'ASSET', 'LIABILITY', 'EQUITY')),
   description TEXT NOT NULL,
 
   invoice_id INTEGER NULL,

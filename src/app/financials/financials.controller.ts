@@ -1,38 +1,35 @@
-import express from "express";
 import { db } from "../../db";
+import { Request, Response } from "express";
 import { BalanceSheet, IncomeStatement } from "../../types";
 
-const router = express.Router();
-
-router.get("/journal-entries", async (req, res) => {
+export async function getJournalEntries(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM journal_entry");
   res.json(rows);
-});
-
-router.get("/accounts", async (req, res) => {
+}
+export async function getAccounts(req: Request, res: Response) {
   const rows = await db.all(`
-          SELECT
-          account,
-          SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE 0 END) AS debit,
-          SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE 0 END) AS credit
-      FROM
-          journal_entry
-      GROUP BY
-          account
-      ORDER BY
-          account;
-    `);
+            SELECT
+            account,
+            SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END) AS debit,
+            SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END) AS credit
+        FROM
+            journal_entry
+        GROUP BY
+            account
+        ORDER BY
+            account;
+      `);
   res.json(rows);
-});
+}
 
-async function getIncomeStatement(): Promise<IncomeStatement> {
+export async function generateIncomeStatement(): Promise<IncomeStatement> {
   const accounts = await db.all(`
-    SELECT
-      account,
-      SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE -amount END) as balance
-    FROM journal_entry
-    GROUP BY account
-  `);
+      SELECT
+        account,
+        SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE -amount END) as balance
+      FROM journal_entry
+      GROUP BY account
+    `);
 
   const incomeStatement: IncomeStatement = {
     revenues: [],
@@ -43,12 +40,12 @@ async function getIncomeStatement(): Promise<IncomeStatement> {
   };
 
   accounts.forEach((account) => {
-    if (account.account.toLowerCase().includes("sales")) {
+    if (account.category === "REVENUE") {
       // Revenue accounts normally have credit balance, so negate it
       account.balance = -account.balance;
       incomeStatement.revenues.push(account);
       incomeStatement.totalRevenues += account.balance;
-    } else if (account.account.toLowerCase().includes("expense")) {
+    } else if (account.category === "EXPENSE") {
       incomeStatement.expenses.push(account);
       incomeStatement.totalExpenses += account.balance;
     }
@@ -59,28 +56,29 @@ async function getIncomeStatement(): Promise<IncomeStatement> {
   return incomeStatement;
 }
 
-router.get("/income-statement", async (req, res) => {
+export async function getIncomeStatement(req: Request, res: Response) {
   try {
-    const statement = await getIncomeStatement();
+    const statement = await generateIncomeStatement();
     res.json(statement);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-router.get("/balance-sheet", async (req, res) => {
+export async function getBalanceSheet(req: Request, res: Response) {
   try {
-    const incomeStatement = await getIncomeStatement();
+    const incomeStatement = await generateIncomeStatement();
     // First get income statement to calculate retained earnings
 
     // Get all accounts with their balances
     const accounts = await db.all(`
-      SELECT
-        account,
-        SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE -amount END) as balance
-      FROM journal_entry
-      GROUP BY account
-    `);
+        SELECT
+          account,
+          category,
+          SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE -amount END) as balance
+        FROM journal_entry
+        GROUP BY account
+      `);
 
     const balanceSheet: BalanceSheet = {
       assets: [],
@@ -93,25 +91,13 @@ router.get("/balance-sheet", async (req, res) => {
 
     // Categorize accounts into assets, liabilities and equity
     accounts.forEach((account) => {
-      if (
-        account.account.toLowerCase().includes("cash") ||
-        account.account.toLowerCase().includes("receivable") ||
-        account.account.toLowerCase().includes("equipment")
-      ) {
+      if (account.category === "ASSET") {
         balanceSheet.assets.push(account);
         balanceSheet.totalAssets += account.balance;
-      } else if (
-        account.account.toLowerCase().includes("payable") ||
-        account.account.toLowerCase().includes("liability")
-      ) {
+      } else if (account.category === "LIABILITY") {
         balanceSheet.liabilities.push(account);
         balanceSheet.totalLiabilities += account.balance;
-      } else if (
-        account.account.toLowerCase().includes("equity") ||
-        account.account.toLowerCase().includes("capital")
-      ) {
-        // For equity accounts, credit balance is positive so negate the balance
-        account.balance = -account.balance;
+      } else if (account.category === "EQUITY") {
         balanceSheet.equity.push(account);
         balanceSheet.totalEquity += account.balance;
       }
@@ -128,6 +114,4 @@ router.get("/balance-sheet", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-export default router;
+}

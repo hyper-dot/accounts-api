@@ -1,7 +1,7 @@
 import express from "express";
-import vendorRoutes from "./app/vendor/routes";
-import invoiceRoutes from "./app/invoice/routes";
-import financialsRoutes from "./app/financials/route";
+import vendorRoutes from "./app/vendor/vendor.routes";
+import invoiceRoutes from "./app/invoice/invoice.routes";
+import financialsRoutes from "./app/financials/financials.routes";
 
 // INIT
 const app = express();

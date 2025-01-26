@@ -1,18 +1,16 @@
-import express from "express";
 import { db } from "../../db";
+import { Request, Response } from "express";
 
-const router = express.Router();
-
-router.get("/", async (req, res) => {
+export async function getAllVendors(req: Request, res: Response) {
   try {
     const rows = await db.all("SELECT * FROM vendor");
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-router.post("/", async (req, res) => {
+export async function createVendor(req: Request, res: Response) {
   const { name } = req.body;
 
   if (!name) {
@@ -29,9 +27,9 @@ router.post("/", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-router.get("/:id", async (req, res) => {
+export async function getVendorById(req: Request, res: Response) {
   try {
     const row = await db.get("SELECT * FROM vendor WHERE id = ?", [
       req.params.id,
@@ -44,9 +42,9 @@ router.get("/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-router.get("/:id/purchase-orders", async (req, res) => {
+export async function getPurchaseOrdersByVendorId(req: Request, res: Response) {
   const vendorId = req.params.id;
 
   if (!vendorId) {
@@ -63,9 +61,9 @@ router.get("/:id/purchase-orders", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}
 
-router.post("/:id/purchase-orders", async (req, res) => {
+export async function createPurchaseOrder(req: Request, res: Response) {
   const vendorId = req.params.id;
   const { description, total_amount, start_date, end_date } = req.body;
 
@@ -101,8 +99,8 @@ router.post("/:id/purchase-orders", async (req, res) => {
     // Insert new purchase order
     const id = await db.run(
       `INSERT INTO purchase_order 
-       (vendor_id, description, total_amount, start_date, end_date, amount_per_month, is_active) 
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+         (vendor_id, description, total_amount, start_date, end_date, amount_per_month, is_active) 
+         VALUES (?, ?, ?, ?, ?, ?, 1)`,
       [
         vendorId,
         description,
@@ -126,6 +124,4 @@ router.post("/:id/purchase-orders", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-export default router;
+}
