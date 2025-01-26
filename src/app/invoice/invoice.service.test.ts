@@ -6,6 +6,7 @@ describe("Invoice Service", () => {
     // Clear existing data
     await db.run("DELETE FROM purchase_order");
     await db.run("DELETE FROM vendor");
+    await db.run("DELETE FROM invoice");
   });
 
   describe("getPurchaseOrderByVendor", () => {

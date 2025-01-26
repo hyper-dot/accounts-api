@@ -68,56 +68,60 @@ export async function getIncomeStatement(req: Request, res: Response) {
   }
 }
 
+export async function generateBalanceSheet(): Promise<BalanceSheet> {
+  const incomeStatement = await generateIncomeStatement();
+
+  // Get all accounts with their balances
+  const accounts = await db.all(`
+      SELECT
+        account,
+        category,
+        SUM(CASE 
+          WHEN category IN ('ASSET', 'EXPENSE') AND entry_type = 'DEBIT' THEN amount
+          WHEN category IN ('ASSET', 'EXPENSE') AND entry_type = 'CREDIT' THEN -amount
+          WHEN category IN ('LIABILITY', 'EQUITY', 'REVENUE') AND entry_type = 'CREDIT' THEN amount 
+          WHEN category IN ('LIABILITY', 'EQUITY', 'REVENUE') AND entry_type = 'DEBIT' THEN -amount
+        END) as balance
+      FROM journal_entry
+      GROUP BY account, category
+    `);
+
+  const balanceSheet: BalanceSheet = {
+    assets: [],
+    liabilities: [],
+    equity: [],
+    totalAssets: 0,
+    totalLiabilities: 0,
+    totalEquity: 0,
+  };
+
+  // Categorize accounts into assets, liabilities and equity
+  accounts.forEach((account) => {
+    if (account.category === "ASSET") {
+      balanceSheet.assets.push(account);
+      balanceSheet.totalAssets += account.balance;
+    } else if (account.category === "LIABILITY") {
+      balanceSheet.liabilities.push(account);
+      balanceSheet.totalLiabilities += account.balance;
+    } else if (account.category === "EQUITY") {
+      balanceSheet.equity.push(account);
+      balanceSheet.totalEquity += account.balance;
+    }
+  });
+
+  // Add retained earnings from income statement
+  balanceSheet.equity.push({
+    account: "Retained Earnings",
+    balance: incomeStatement.netIncome,
+  });
+  balanceSheet.totalEquity += incomeStatement.netIncome;
+
+  return balanceSheet;
+}
+
 export async function getBalanceSheet(req: Request, res: Response) {
   try {
-    const incomeStatement = await generateIncomeStatement();
-    // First get income statement to calculate retained earnings
-
-    // Get all accounts with their balances
-    const accounts = await db.all(`
-        SELECT
-          account,
-          category,
-          SUM(CASE 
-            WHEN category IN ('ASSET', 'EXPENSE') AND entry_type = 'DEBIT' THEN amount
-            WHEN category IN ('ASSET', 'EXPENSE') AND entry_type = 'CREDIT' THEN -amount
-            WHEN category IN ('LIABILITY', 'EQUITY', 'REVENUE') AND entry_type = 'CREDIT' THEN amount 
-            WHEN category IN ('LIABILITY', 'EQUITY', 'REVENUE') AND entry_type = 'DEBIT' THEN -amount
-          END) as balance
-        FROM journal_entry
-        GROUP BY account, category
-      `);
-
-    const balanceSheet: BalanceSheet = {
-      assets: [],
-      liabilities: [],
-      equity: [],
-      totalAssets: 0,
-      totalLiabilities: 0,
-      totalEquity: 0,
-    };
-
-    // Categorize accounts into assets, liabilities and equity
-    accounts.forEach((account) => {
-      if (account.category === "ASSET") {
-        balanceSheet.assets.push(account);
-        balanceSheet.totalAssets += account.balance;
-      } else if (account.category === "LIABILITY") {
-        balanceSheet.liabilities.push(account);
-        balanceSheet.totalLiabilities += account.balance;
-      } else if (account.category === "EQUITY") {
-        balanceSheet.equity.push(account);
-        balanceSheet.totalEquity += account.balance;
-      }
-    });
-
-    // Add retained earnings from income statement
-    balanceSheet.equity.push({
-      account: "Retained Earnings",
-      balance: incomeStatement.netIncome,
-    });
-    balanceSheet.totalEquity += incomeStatement.netIncome;
-
+    const balanceSheet = await generateBalanceSheet();
     res.json(balanceSheet);
   } catch (err) {
     res
