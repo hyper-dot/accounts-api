@@ -4,13 +4,14 @@
   "main": "index.js",
   "scripts": {
     "start": "bun --watch src/index.ts",
-    "db:init": "sqlite3 ./database.db < src/db/schema.sql"
+    "db:init": "sqlite3 ./database.db < src/db/schema.sql && sqlite3 ./database.db < ./src/db/seed.sql"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "date-fns": "^4.1.0",
     "express": "^4.21.2",
     "sqlite3": "^5.1.7"
   },

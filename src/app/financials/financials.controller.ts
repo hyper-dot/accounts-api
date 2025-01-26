@@ -76,9 +76,14 @@ export async function getBalanceSheet(req: Request, res: Response) {
         SELECT
           account,
           category,
-          SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE -amount END) as balance
+          SUM(CASE 
+            WHEN category IN ('ASSET', 'EXPENSE') AND entry_type = 'DEBIT' THEN amount
+            WHEN category IN ('ASSET', 'EXPENSE') AND entry_type = 'CREDIT' THEN -amount
+            WHEN category IN ('LIABILITY', 'EQUITY', 'REVENUE') AND entry_type = 'CREDIT' THEN amount 
+            WHEN category IN ('LIABILITY', 'EQUITY', 'REVENUE') AND entry_type = 'DEBIT' THEN -amount
+          END) as balance
         FROM journal_entry
-        GROUP BY account
+        GROUP BY account, category
       `);
 
     const balanceSheet: BalanceSheet = {

@@ -45,23 +45,3 @@ CREATE TABLE IF NOT EXISTS invoice (
   vendor_id INTEGER NOT NULL,
   FOREIGN KEY (vendor_id) REFERENCES vendor(id)
 );
-
-
--- Seed data 
-INSERT INTO vendor (name) VALUES ('Microsoft');
-
-INSERT INTO purchase_order (
-    vendor_id,
-    description,
-    total_amount,
-    start_date,
-    end_date,
-    amount_per_month
-) VALUES (
-    1, -- references the Microsoft vendor we just created
-    'Azure Cloud Services Annual Contract',
-    12000.00,
-    '2025-01-01',
-    '2025-12-31',
-    1000.00
-);
