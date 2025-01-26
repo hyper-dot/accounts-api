@@ -26,6 +26,7 @@ export async function generateIncomeStatement(): Promise<IncomeStatement> {
   const accounts = await db.all(`
       SELECT
         account,
+        category,
         SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE -amount END) as balance
       FROM journal_entry
       GROUP BY account

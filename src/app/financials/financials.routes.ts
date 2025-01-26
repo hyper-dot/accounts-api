@@ -1,7 +1,12 @@
 import express from "express";
 import { db } from "../../db";
 import { BalanceSheet, IncomeStatement } from "../../types";
-import { getJournalEntries } from "./financials.controller";
+import {
+  getJournalEntries,
+  getAccounts,
+  getIncomeStatement,
+  getBalanceSheet,
+} from "./financials.controller";
 
 const router = express.Router();
 
