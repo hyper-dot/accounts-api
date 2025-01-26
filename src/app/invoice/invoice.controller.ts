@@ -1,6 +1,11 @@
 import { db } from "../../db";
 import { Request, Response } from "express";
 import { insertJournalEntry } from "../../db/service";
+import {
+  getPurchaseOrderByVendor,
+  getVendorById,
+  insertInvoiceReturningId,
+} from "./invoice.service";
 
 export async function getAllInvoices(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM invoice");
@@ -32,11 +37,7 @@ export async function createInvoice(req: Request, res: Response) {
 
   // First check purchase order
   try {
-    const purchaseOrder = await db.get(
-      "SELECT * FROM purchase_order WHERE is_active = 1 AND vendor_id = ?",
-      [vendorId]
-    );
-
+    const purchaseOrder = await getPurchaseOrderByVendor(vendorId);
     if (!purchaseOrder) {
       res
         .status(404)
@@ -44,19 +45,19 @@ export async function createInvoice(req: Request, res: Response) {
       return;
     }
 
-    const vendor = await db.get("SELECT * FROM vendor WHERE id = ?", [
-      vendorId,
-    ]);
-
+    const vendor = await getVendorById(vendorId);
     if (!vendor) {
       res.status(404).json({ error: "Vendor not found" });
       return;
     }
 
-    const invoice_id = await db.run(
-      "INSERT INTO invoice (description, issued_date, service_date, amount, vendor_id) VALUES (?, ?, ?, ?, ?)",
-      [description, issued_date, service_date, amount, vendorId]
-    );
+    const invoice_id = await insertInvoiceReturningId({
+      description,
+      issued_date,
+      service_date,
+      amount,
+      vendor_id: vendorId,
+    });
 
     const transaction_id = Date.now();
     const ACTUAL_AMOUNT = amount;

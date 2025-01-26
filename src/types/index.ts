@@ -19,3 +19,11 @@ export interface BalanceSheet {
   totalLiabilities: number;
   totalEquity: number;
 }
+
+export interface Invoice {
+  description: string;
+  issued_date: string;
+  service_date: string;
+  amount: number;
+  vendor_id: string;
+}
