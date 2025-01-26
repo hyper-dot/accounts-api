@@ -21,7 +21,9 @@ export async function getInvoicesByVendorId(req: Request, res: Response) {
     ]);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
 
@@ -197,6 +199,8 @@ export async function createInvoice(req: Request, res: Response) {
 
     res.json({ message: "Inserted invoice successfully !!" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }

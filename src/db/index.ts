@@ -1,11 +1,14 @@
-import sqlite3 from "sqlite3";
+import { Database } from "sqlite3";
+import { config } from "dotenv";
+config();
 
-const database = new sqlite3.Database("database.db");
+const dbPath = process.env.NODE_ENV === "test" ? ":memory:" : "./database.db";
+const database = new Database(dbPath);
 
 // Enable foreign key constraints
 database.run("PRAGMA foreign_keys = ON;", (err) => {
   if (err) {
-    console.error("Failed to enable foreign key constraints:", err.message);
+    console.error("Failed to enable foreign key constraints:", err);
   } else {
     console.log("Foreign key constraints enabled.");
   }
@@ -30,9 +33,9 @@ export const db = {
   },
   run: (query: string, params: any[] = []) => {
     return new Promise<number>((resolve, reject) => {
-      database.run(query, params, function (err) {
+      database.run(query, params, function (this: any, err: Error | null) {
         if (err) reject(err);
-        resolve(this.lastID);
+        resolve(this?.lastID || 0);
       });
     });
   },

@@ -62,7 +62,9 @@ export async function getIncomeStatement(req: Request, res: Response) {
     const statement = await generateIncomeStatement();
     res.json(statement);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
 
@@ -118,6 +120,8 @@ export async function getBalanceSheet(req: Request, res: Response) {
 
     res.json(balanceSheet);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }

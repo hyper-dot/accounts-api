@@ -6,7 +6,9 @@ export async function getAllVendors(req: Request, res: Response) {
     const rows = await db.all("SELECT * FROM vendor");
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
 
@@ -25,7 +27,9 @@ export async function createVendor(req: Request, res: Response) {
       name,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
 
@@ -40,7 +44,9 @@ export async function getVendorById(req: Request, res: Response) {
     }
     res.json(row);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
 
@@ -59,7 +65,9 @@ export async function getPurchaseOrdersByVendorId(req: Request, res: Response) {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }
 
@@ -122,6 +130,8 @@ export async function createPurchaseOrder(req: Request, res: Response) {
       is_active: true,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
 }

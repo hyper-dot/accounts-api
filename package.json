@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "bun --watch src/index.ts",
-    "db:init": "sqlite3 ./database.db < src/db/schema.sql && sqlite3 ./database.db < ./src/db/seed.sql"
+    "db:init": "sqlite3 ./database.db < src/db/schema.sql && sqlite3 ./database.db < ./src/db/seed.sql",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "keywords": [],
   "author": "",
@@ -12,10 +14,16 @@
   "description": "",
   "dependencies": {
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.2.5"
   }
 }
