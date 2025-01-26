@@ -1,0 +1,42 @@
+-- vendor table
+CREATE TABLE IF NOT EXISTS vendor (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- purchase_order table
+CREATE TABLE IF NOT EXISTS purchase_order (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vendor_id INTEGER,
+  description TEXT,
+  total_amount DECIMAL(10,2) NOT NULL,
+  start_date DATETIME NOT NULL,
+  end_date DATETIME NOT NULL,
+  amount_per_month DECIMAL(10,2) NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+);
+
+-- Account table 
+CREATE TABLE IF NOT EXISTS account (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  amount DECIMAL(10,2) NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('DEBIT', 'CREDIT')),
+  description TEXT,
+  vendor_id INTEGER NULL,
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+);
+
+-- Invoice table
+CREATE TABLE IF NOT EXISTS invoice (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  description TEXT NOT NULL,
+  date DATETIME NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  vendor_id INTEGER NOT NULL,
+  FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+);
