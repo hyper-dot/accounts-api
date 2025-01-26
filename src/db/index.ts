@@ -2,6 +2,15 @@ import sqlite3 from "sqlite3";
 
 const database = new sqlite3.Database("database.db");
 
+// Enable foreign key constraints
+database.run("PRAGMA foreign_keys = ON;", (err) => {
+  if (err) {
+    console.error("Failed to enable foreign key constraints:", err.message);
+  } else {
+    console.log("Foreign key constraints enabled.");
+  }
+});
+
 export const db = {
   get: (query: string, params: any[] = []) => {
     return new Promise<any>((resolve, reject) => {

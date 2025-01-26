@@ -1,7 +1,6 @@
 import express from "express";
 import vendorRoutes from "./app/vendor/routes";
 import invoiceRoutes from "./app/invoice/routes";
-import accountsRoutes from "./app/accounts/routes";
 import financialsRoutes from "./app/financials/route";
 
 // INIT
@@ -11,7 +10,6 @@ app.use(express.json());
 // ROUTES
 app.use("/vendors", vendorRoutes);
 app.use("/invoices", invoiceRoutes);
-app.use("/accounts", accountsRoutes);
 app.use("/financials", financialsRoutes);
 
 app.listen(8080, () => {

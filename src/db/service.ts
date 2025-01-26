@@ -2,7 +2,7 @@ import { db } from ".";
 
 type Props = {
   service_date: Date;
-  group_id: number;
+  transaction_id: number;
   account: string;
   amount: Number;
   type: "DEBIT" | "CREDIT";
@@ -11,7 +11,7 @@ type Props = {
 };
 export async function insertJournalEntry({
   service_date,
-  group_id,
+  transaction_id,
   account,
   amount,
   type,
@@ -19,9 +19,17 @@ export async function insertJournalEntry({
   invoice_id,
 }: Props) {
   return await db.run(
-    `INSERT INTO journal_entry(date, group_id, account, amount, type, description, invoice_id)
+    `INSERT INTO journal_entry(date, transaction_id, account, amount, type, description, invoice_id)
          VALUES(?, ?, ?, ?, ?, ?, ?)
       `,
-    [service_date, group_id, account, amount, type, description, invoice_id],
+    [
+      service_date,
+      transaction_id,
+      account,
+      amount,
+      type,
+      description,
+      invoice_id,
+    ]
   );
 }
