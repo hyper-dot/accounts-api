@@ -20,15 +20,30 @@ CREATE TABLE IF NOT EXISTS purchase_order (
 );
 
 -- Account table 
-CREATE TABLE IF NOT EXISTS account (
+-- CREATE TABLE IF NOT EXISTS account (
+--   id INTEGER PRIMARY KEY AUTOINCREMENT,
+--   name TEXT NOT NULL,
+--   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+--   amount DECIMAL(10,2) NOT NULL,
+--   type TEXT NOT NULL CHECK (type IN ('DEBIT', 'CREDIT')),
+--   description TEXT,
+--   vendor_id INTEGER NULL,
+--   invoice_id INTEGER NULL,
+--   FOREIGN KEY (vendor_id) REFERENCES vendor(id),
+--   FOREIGN KEY (invoice_id) REFERENCES invoice(id)
+-- );
+
+-- Journal entry Table
+CREATE TABLE IF NOT EXISTS journal_entry (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  group_id INTEGER NOT NULL,
+  account TEXT NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('DEBIT', 'CREDIT')),
-  description TEXT,
-  vendor_id INTEGER NULL,
-  FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+  description TEXT NOT NULL,
+
+  invoice_id INTEGER NULL,
+  FOREIGN KEY (invoice_id) REFERENCES invoice(id)
 );
 
 -- Invoice table
@@ -37,6 +52,7 @@ CREATE TABLE IF NOT EXISTS invoice (
   description TEXT NOT NULL,
   date DATETIME NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
+  
   vendor_id INTEGER NOT NULL,
   FOREIGN KEY (vendor_id) REFERENCES vendor(id)
 );
