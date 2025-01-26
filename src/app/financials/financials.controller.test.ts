@@ -6,7 +6,22 @@ import { db } from "../../db";
 
 describe("Financial Controller", () => {
   beforeEach(async () => {
-    await db.run("DELETE FROM journal_entry");
+    // Drop existing tables
+    await db.run("DROP TABLE IF EXISTS journal_entry");
+
+    // Create journal_entry table
+    await db.run(`
+      CREATE TABLE journal_entry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER NOT NULL,
+        account TEXT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        entry_type TEXT NOT NULL,
+        description TEXT NOT NULL,
+        date TEXT NOT NULL,
+        category TEXT NOT NULL
+      )
+    `);
   });
 
   describe("generateIncomeStatement", () => {
