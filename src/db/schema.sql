@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS purchase_order (
 -- Account table 
 CREATE TABLE IF NOT EXISTS account (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
+  name TEXT NOT NULL UNIQUE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   amount DECIMAL(10,2) NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('DEBIT', 'CREDIT')),
@@ -39,4 +39,24 @@ CREATE TABLE IF NOT EXISTS invoice (
   amount DECIMAL(10,2) NOT NULL,
   vendor_id INTEGER NOT NULL,
   FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+);
+
+
+-- Seed data 
+INSERT INTO vendor (name) VALUES ('Microsoft');
+
+INSERT INTO purchase_order (
+    vendor_id,
+    description,
+    total_amount,
+    start_date,
+    end_date,
+    amount_per_month
+) VALUES (
+    1, -- references the Microsoft vendor we just created
+    'Azure Cloud Services Annual Contract',
+    12000.00,
+    '2025-01-01',
+    '2025-12-31',
+    1000.00
 );

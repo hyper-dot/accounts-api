@@ -53,18 +53,71 @@ router.post("/:vendor_id", async (req, res) => {
       return;
     }
 
-    const id = await db.run(
-      "INSERT INTO invoice (description, date, amount, vendor_id) VALUES (?, ?, ?, ?)",
-      [description, date, amount, vendorId]
-    );
+    const EXPECTED_AMOUNT = purchaseOrder.amount_per_month;
+    const ACTUAL_AMOUNT = amount;
 
-    res.json({
-      id,
-      description,
-      date,
-      amount,
-      vendor_id: vendorId,
-    });
+    console.log({ EXPECTED_AMOUNT, ACTUAL_AMOUNT });
+
+    if (EXPECTED_AMOUNT > ACTUAL_AMOUNT) {
+      // CASE Less than expected
+      // Create/update cash account with expected amount
+      await db.run(
+        `
+        INSERT INTO account (name, amount, type, description, vendor_id)
+        VALUES ('Cash', ?, 'DEBIT', 'Cash account for invoice payment', ?)
+        ON CONFLICT(name) 
+        DO UPDATE SET amount = amount + ?`,
+        [EXPECTED_AMOUNT, vendorId, EXPECTED_AMOUNT]
+      );
+
+      // Get vendor name for account descriptions
+      const vendorName = await db.get("SELECT name FROM vendor WHERE id = ?", [
+        vendorId,
+      ]);
+
+      // Create/update accounts payable with difference amount
+      const difference = EXPECTED_AMOUNT - ACTUAL_AMOUNT;
+      await db.run(
+        `
+        INSERT INTO account (name, amount, type, description, vendor_id) 
+        VALUES (?, ?, 'DEBIT', 'Accounts payable for vendor', ?)
+        ON CONFLICT(name)
+        DO UPDATE SET amount = amount + ?`,
+        [
+          `Accounts Payable (${vendorName.name})`,
+          difference,
+          vendorId,
+          difference,
+        ]
+      );
+
+      // Create/update vendor account with actual amount
+      await db.run(
+        `
+        INSERT INTO account (name, amount, type, description, vendor_id)
+        VALUES (?, ?, 'CREDIT', 'Vendor account', ?)
+        ON CONFLICT(name)
+        DO UPDATE SET amount = amount + ?`,
+        [vendorName.name, ACTUAL_AMOUNT, vendorId, ACTUAL_AMOUNT]
+      );
+    } else if (EXPECTED_AMOUNT < ACTUAL_AMOUNT) {
+      // CASE More than expected
+    } else {
+      // CASE Equal
+    }
+    //   const id = await db.run(
+    //     "INSERT INTO invoice (description, date, amount, vendor_id) VALUES (?, ?, ?, ?)",
+    //     [description, date, amount, vendorId]
+    //   );
+    //
+    //   res.json({
+    //     id,
+    //     description,
+    //     date,
+    //     amount,
+    //     vendor_id: vendorId,
+    //   });
+    res.json({});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
