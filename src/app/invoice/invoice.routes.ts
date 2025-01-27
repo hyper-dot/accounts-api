@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  createInvoice,
+  createInvoiceForVendor,
   getAllInvoices,
   getInvoicesByVendorId,
   getInvoiceById,
@@ -13,10 +13,10 @@ router.get("/", getAllInvoices);
 
 router.get("/:invoice_id", getInvoiceById);
 
+router.post("/:invoice_id/payment", makePayment);
+
 router.get("/vendor/:vendor_id", getInvoicesByVendorId);
 
-router.post("/vendor/:vendor_id", createInvoice);
-
-router.post("/:invoice_id/payment", makePayment);
+router.post("/vendor/:vendor_id", createInvoiceForVendor);
 
 export default router;

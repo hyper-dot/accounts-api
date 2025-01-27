@@ -12,6 +12,7 @@ export async function getAllInvoices(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM invoice");
   res.json(rows);
 }
+
 export async function getInvoiceById(req: Request, res: Response) {
   const invoiceId = req.params.invoice_id;
   const invoice = await db.get("SELECT * FROM invoice WHERE id = ?", [
@@ -45,7 +46,7 @@ export async function getInvoicesByVendorId(req: Request, res: Response) {
   }
 }
 
-export async function createInvoice(req: Request, res: Response) {
+export async function createInvoiceForVendor(req: Request, res: Response) {
   const { description, issued_date, amount, service_date, status } = req.body;
   const vendorId = req.params.vendor_id;
 
@@ -70,10 +71,11 @@ export async function createInvoice(req: Request, res: Response) {
     // Check if service date falls within purchase order period
     const poStartDate = new Date(purchaseOrder.start_date);
     const poEndDate = new Date(purchaseOrder.end_date);
+    const serviceDate = new Date(service_date);
 
     if (
-      isBefore(new Date(service_date), poStartDate) ||
-      isBefore(poEndDate, new Date(service_date))
+      isBefore(serviceDate, poStartDate) ||
+      isBefore(poEndDate, serviceDate)
     ) {
       res.status(400).json({
         error: "Service date must be within purchase order period",
@@ -89,8 +91,7 @@ export async function createInvoice(req: Request, res: Response) {
 
     const transaction_id = Date.now();
     const ACTUAL_AMOUNT = amount;
-    const serviceDate = new Date(service_date);
-    const currentDate = new Date("2024-02-27");
+    const currentDate = new Date("2025-02-27");
 
     // Check if invoice already exists for the service date
     const existingInvoice = await db.get(
@@ -305,12 +306,16 @@ export async function makePayment(req: Request, res: Response) {
   const remainingAmount = invoice.amount - partialPayment;
   const transaction_id = Date.now();
 
+  console.log("PARTIAL PAYMENTS", partialPayment);
+  console.log("REMAINING AMOUNT", remainingAmount);
+
   if (amount > remainingAmount) {
     res.status(400).json({ error: "Amount is greater than remaining amount" });
     return;
   }
 
   if (amount < remainingAmount) {
+    console.log("PARTIAL PAYMENT");
     // Create a journal entry for the partial payment
     await insertJournalEntry({
       invoice_id: invoice.id,
@@ -320,11 +325,11 @@ export async function makePayment(req: Request, res: Response) {
       description: "Partial payment for invoice",
       date,
       transaction_id,
-      category: "EXPENSE",
+      category: "ASSET",
     });
     await insertJournalEntry({
       invoice_id: invoice.id,
-      amount: remainingAmount,
+      amount,
       account: "Accounts Payable",
       entry_type: "DEBIT",
       description: "Partial payment for invoice",
@@ -337,19 +342,20 @@ export async function makePayment(req: Request, res: Response) {
     ]);
   } else {
     // Full payment
+    console.log("FULL PAYMENT");
     await insertJournalEntry({
       invoice_id: invoice.id,
-      amount: invoice.amount,
+      amount: amount,
       account: "Cash Account",
       entry_type: "CREDIT",
       description: "Remaining payment for invoice",
       date,
       transaction_id,
-      category: "EXPENSE",
+      category: "ASSET",
     });
     await insertJournalEntry({
       invoice_id: invoice.id,
-      amount: invoice.amount,
+      amount: amount,
       account: "Accounts Payable",
       entry_type: "DEBIT",
       description: "Remaining payment for invoice",
@@ -363,5 +369,5 @@ export async function makePayment(req: Request, res: Response) {
     ]);
   }
 
-  res.json({ message: "Inserted journal entry successfully !!" });
+  res.json({ message: "Amount paid successfully !!" });
 }
