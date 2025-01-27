@@ -20,6 +20,17 @@ CREATE TABLE IF NOT EXISTS purchase_order (
   FOREIGN KEY (vendor_id) REFERENCES vendor(id)
 );
 
+CREATE TABLE IF NOT EXISTS purchase_order_transactions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  amount DECIMAL(10,2) NOT NULL,
+  payment_status TEXT NOT NULL CHECK (payment_status IN ('PAID', 'UNPAID')),
+  purchase_order_id INTEGER NOT NULL,
+  journal_entry_id INTEGER NOT NULL,
+  FOREIGN KEY (purchase_order_id) REFERENCES purchase_order(id),
+  FOREIGN KEY (journal_entry_id) REFERENCES journal_entry(id)
+);
+
 -- Journal entry Table
 CREATE TABLE IF NOT EXISTS journal_entry (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
