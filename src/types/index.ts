@@ -25,5 +25,6 @@ export interface Invoice {
   issued_date: string;
   service_date: string;
   amount: number;
-  vendor_id: string;
+  purchase_order_id: string;
+  status: string;
 }

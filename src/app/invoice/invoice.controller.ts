@@ -28,12 +28,13 @@ export async function getInvoicesByVendorId(req: Request, res: Response) {
 }
 
 export async function createInvoice(req: Request, res: Response) {
-  const { description, issued_date, amount, service_date } = req.body;
+  const { description, issued_date, amount, service_date, status } = req.body;
   const vendorId = req.params.vendor_id;
 
-  if (!description || !issued_date || !amount || !service_date) {
+  if (!description || !issued_date || !amount || !service_date || !status) {
     res.status(400).json({
-      error: "description, issued_date, service_date and amount are required",
+      error:
+        "description, issued_date, service_date, amount and status are required",
     });
     return;
   }
@@ -68,24 +69,40 @@ export async function createInvoice(req: Request, res: Response) {
       return;
     }
 
-    const invoice_id = await insertInvoiceReturningId({
-      description,
-      issued_date,
-      service_date,
-      amount,
-      vendor_id: vendorId,
-    });
-
     const transaction_id = Date.now();
     const ACTUAL_AMOUNT = amount;
     const serviceDate = new Date(service_date);
     const currentDate = new Date("2024-02-27");
 
+    // Check if invoice already exists for the service date
+    const existingInvoice = await db.get(
+      "SELECT * FROM invoice WHERE service_date = ? AND purchase_order_id = ?",
+      [service_date, purchaseOrder.id]
+    );
+
+    if (existingInvoice) {
+      res.status(400).json({
+        error:
+          "An invoice already exists for this service date and purchase order",
+      });
+      return;
+    }
+
+    const invoice_id = await insertInvoiceReturningId({
+      description,
+      issued_date,
+      service_date,
+      amount,
+      status,
+      purchase_order_id: purchaseOrder.id,
+    });
+
     // Get the monthly amount from purchase order
     const monthlyAmount = purchaseOrder.amount_per_month;
+    const isPreviousMonth = isSameMonth(serviceDate, subMonths(currentDate, 1));
 
     // Handle previous month entries differently
-    if (isSameMonth(serviceDate, subMonths(currentDate, 1))) {
+    if (isPreviousMonth) {
       console.log("Previous month");
 
       // 1. Reverse the original accrual
@@ -188,16 +205,30 @@ export async function createInvoice(req: Request, res: Response) {
     } else {
       // Current month entries (existing logic)
       console.log("Current month");
-      await insertJournalEntry({
-        service_date,
-        transaction_id,
-        account: "Cash Account",
-        amount: ACTUAL_AMOUNT,
-        description,
-        invoice_id,
-        category: "ASSET",
-        entry_type: "CREDIT",
-      });
+
+      if (status === "PAID") {
+        await insertJournalEntry({
+          service_date,
+          transaction_id,
+          account: "Cash Account",
+          amount: ACTUAL_AMOUNT,
+          description,
+          invoice_id,
+          category: "ASSET",
+          entry_type: "CREDIT",
+        });
+      } else {
+        await insertJournalEntry({
+          service_date,
+          transaction_id,
+          account: "Account Payable",
+          amount: ACTUAL_AMOUNT,
+          description,
+          invoice_id,
+          category: "LIABILITY",
+          entry_type: "CREDIT",
+        });
+      }
 
       await insertJournalEntry({
         service_date,
