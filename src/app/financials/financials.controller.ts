@@ -30,7 +30,8 @@ export async function getAccounts(req: Request, res: Response) {
           date,
           description,
           entry_type,
-          amount
+          amount,
+          invoice_id
         FROM
           journal_entry
         WHERE
