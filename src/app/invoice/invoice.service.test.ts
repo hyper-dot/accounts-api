@@ -31,6 +31,8 @@ describe("Invoice Service", () => {
         end_date TEXT NOT NULL,
         amount_per_month DECIMAL(10,2) NOT NULL,
         is_active INTEGER DEFAULT 1,
+        type TEXT NOT NULL DEFAULT 'RECURRING',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (vendor_id) REFERENCES vendor(id)
       )
     `);
@@ -38,26 +40,28 @@ describe("Invoice Service", () => {
     await db.run(`
       CREATE TABLE invoice (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        vendor_id INTEGER NOT NULL,
+        purchase_order_id INTEGER NOT NULL,
         description TEXT NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         issued_date TEXT NOT NULL,
         service_date TEXT NOT NULL,
-        FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+        status TEXT NOT NULL DEFAULT 'UNPAID',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (purchase_order_id) REFERENCES purchase_order(id)
       )
     `);
 
     await db.run(`
       CREATE TABLE journal_entry (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transaction_id INTEGER NOT NULL,
+        invoice_id INTEGER NOT NULL,
         account TEXT NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         entry_type TEXT NOT NULL,
         description TEXT NOT NULL,
         date TEXT NOT NULL,
         category TEXT NOT NULL,
-        FOREIGN KEY (transaction_id) REFERENCES invoice(id)
+        FOREIGN KEY (invoice_id) REFERENCES invoice(id)
       )
     `);
   });
@@ -108,12 +112,13 @@ describe("Invoice Service", () => {
         issued_date: "2024-02-05",
         service_date: "2024-01-15",
         amount: 1200,
-        vendor_id: vendorId.toString(),
+        purchase_order_id: vendorId.toString(),
+        status: "UNPAID",
       });
 
       await db.run(
         `INSERT INTO journal_entry (
-          transaction_id, account, amount, entry_type,
+          invoice_id, account, amount, entry_type,
           description, date, category
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -154,7 +159,7 @@ describe("Invoice Service", () => {
       // First, create the invoice record
       await db.run(
         `INSERT INTO invoice (
-          vendor_id, description, amount, 
+          purchase_order_id, description, amount, 
           issued_date, service_date
         ) VALUES (?, ?, ?, ?, ?)`,
         [
@@ -173,7 +178,7 @@ describe("Invoice Service", () => {
       // Add DEBIT entry
       await db.run(
         `INSERT INTO journal_entry (
-          transaction_id, account, amount, entry_type,
+          invoice_id, account, amount, entry_type,
           description, date, category
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -190,7 +195,7 @@ describe("Invoice Service", () => {
       // Add corresponding CREDIT entry
       await db.run(
         `INSERT INTO journal_entry (
-          transaction_id, account, amount, entry_type,
+          invoice_id, account, amount, entry_type,
           description, date, category
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -227,7 +232,7 @@ describe("Invoice Service", () => {
       // First, create the invoice record
       await db.run(
         `INSERT INTO invoice (
-          vendor_id, description, amount, 
+          purchase_order_id, description, amount, 
           issued_date, service_date
         ) VALUES (?, ?, ?, ?, ?)`,
         [
@@ -246,7 +251,7 @@ describe("Invoice Service", () => {
       // Add DEBIT entry
       await db.run(
         `INSERT INTO journal_entry (
-          transaction_id, account, amount, entry_type,
+          invoice_id, account, amount, entry_type,
           description, date, category
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -263,7 +268,7 @@ describe("Invoice Service", () => {
       // Add corresponding CREDIT entry
       await db.run(
         `INSERT INTO journal_entry (
-          transaction_id, account, amount, entry_type,
+          invoice_id, account, amount, entry_type,
           description, date, category
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
