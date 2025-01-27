@@ -5,14 +5,16 @@ INSERT INTO purchase_order (
     total_amount,
     start_date,
     end_date,
-    amount_per_month
+    amount_per_month,
+    type
 ) VALUES (
     1, -- references the Microsoft vendor we just created
     'Azure Cloud Services Annual Contract',
     12000.00,
     '2025-01-01',
     '2025-12-31',
-    1000.00
+    1000.00,
+    'RECURRING'
 );
 
 INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 

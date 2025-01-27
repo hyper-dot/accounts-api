@@ -73,13 +73,24 @@ export async function getPurchaseOrdersByVendorId(req: Request, res: Response) {
 
 export async function createPurchaseOrder(req: Request, res: Response) {
   const vendorId = req.params.id;
-  const { description, total_amount, start_date, end_date } = req.body;
+  const { description, total_amount, start_date, end_date, type } = req.body;
 
-  if (!description || !total_amount || !start_date || !end_date) {
+  if (!description || !total_amount || !start_date || !end_date || !type) {
     res.status(400).json({
-      error: "Description, total amount, start date and end date are required",
+      error:
+        "Description, total amount, start date, end date and type are required",
     });
     return;
+  }
+
+  if (type === "ONE_TIME") {
+    if (start_date !== end_date) {
+      res.status(400).json({
+        error:
+          "Start date and end date must be equal for one-time purchase orders",
+      });
+      return;
+    }
   }
 
   try {
@@ -107,8 +118,8 @@ export async function createPurchaseOrder(req: Request, res: Response) {
     // Insert new purchase order
     const id = await db.run(
       `INSERT INTO purchase_order 
-         (vendor_id, description, total_amount, start_date, end_date, amount_per_month, is_active) 
-         VALUES (?, ?, ?, ?, ?, ?, 1)`,
+         (vendor_id, description, total_amount, start_date, end_date, amount_per_month, is_active, type) 
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
       [
         vendorId,
         description,
@@ -116,6 +127,7 @@ export async function createPurchaseOrder(req: Request, res: Response) {
         start_date,
         end_date,
         amount_per_month,
+        type,
       ]
     );
 
@@ -128,6 +140,7 @@ export async function createPurchaseOrder(req: Request, res: Response) {
       end_date,
       amount_per_month,
       is_active: true,
+      type,
     });
   } catch (err) {
     res

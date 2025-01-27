@@ -48,6 +48,20 @@ export async function createInvoice(req: Request, res: Response) {
       return;
     }
 
+    // Check if service date falls within purchase order period
+    const poStartDate = new Date(purchaseOrder.start_date);
+    const poEndDate = new Date(purchaseOrder.end_date);
+
+    if (
+      isBefore(new Date(service_date), poStartDate) ||
+      isBefore(poEndDate, new Date(service_date))
+    ) {
+      res.status(400).json({
+        error: "Service date must be within purchase order period",
+      });
+      return;
+    }
+
     const vendor = await getVendorById(vendorId);
     if (!vendor) {
       res.status(404).json({ error: "Vendor not found" });
