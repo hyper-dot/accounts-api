@@ -2,7 +2,7 @@ import { db } from ".";
 import { InsertJournalEntryProps } from "../types/db";
 
 export async function insertJournalEntry({
-  service_date,
+  date,
   transaction_id,
   account,
   amount,
@@ -16,7 +16,7 @@ export async function insertJournalEntry({
          VALUES(?, ?, ?, ?, ?, ?, ?, ?)
       `,
     [
-      service_date,
+      date,
       transaction_id,
       account,
       amount,

@@ -1,5 +1,5 @@
 export type InsertJournalEntryProps = {
-  service_date: Date;
+  date: Date;
   transaction_id: number;
   account: string;
   amount: Number;

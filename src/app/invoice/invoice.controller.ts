@@ -12,13 +12,31 @@ export async function getAllInvoices(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM invoice");
   res.json(rows);
 }
+export async function getInvoiceById(req: Request, res: Response) {
+  const invoiceId = req.params.invoice_id;
+  const invoice = await db.get("SELECT * FROM invoice WHERE id = ?", [
+    invoiceId,
+  ]);
+  if (!invoice) {
+    res.status(404).json({ error: "Invoice not found" });
+    return;
+  }
+  res.json(invoice);
+}
 
 export async function getInvoicesByVendorId(req: Request, res: Response) {
   const vendorId = req.params.vendor_id;
   try {
-    const rows = await db.all("SELECT * FROM invoice WHERE vendor_id = ?", [
-      vendorId,
-    ]);
+    // Join with purchase_order to get invoices for vendor through purchase_order_id
+    const rows = await db.all(
+      `
+      SELECT i.* 
+      FROM invoice i
+      JOIN purchase_order po ON i.purchase_order_id = po.id 
+      WHERE po.vendor_id = ?
+    `,
+      [vendorId]
+    );
     res.json(rows);
   } catch (err) {
     res
@@ -107,7 +125,7 @@ export async function createInvoice(req: Request, res: Response) {
 
       // 1. Reverse the original accrual
       await insertJournalEntry({
-        service_date,
+        date: service_date,
         transaction_id,
         account: "Accrued Liabilities",
         amount: monthlyAmount,
@@ -118,7 +136,7 @@ export async function createInvoice(req: Request, res: Response) {
       });
 
       await insertJournalEntry({
-        service_date,
+        date: service_date,
         transaction_id,
         account: "Expense Account",
         amount: monthlyAmount,
@@ -130,7 +148,7 @@ export async function createInvoice(req: Request, res: Response) {
 
       // 2. Record the actual expense
       await insertJournalEntry({
-        service_date,
+        date: service_date,
         transaction_id,
         account: "Expense Account",
         amount: ACTUAL_AMOUNT,
@@ -141,7 +159,7 @@ export async function createInvoice(req: Request, res: Response) {
       });
 
       await insertJournalEntry({
-        service_date,
+        date: service_date,
         transaction_id,
         account: "Cash Account",
         amount: ACTUAL_AMOUNT,
@@ -157,7 +175,7 @@ export async function createInvoice(req: Request, res: Response) {
         if (difference > 0) {
           // Actual amount is greater than accrued
           await insertJournalEntry({
-            service_date,
+            date: service_date,
             transaction_id,
             account: "Expense Account",
             amount: difference,
@@ -168,7 +186,7 @@ export async function createInvoice(req: Request, res: Response) {
           });
 
           await insertJournalEntry({
-            service_date,
+            date: service_date,
             transaction_id,
             account: "Accrued Liabilities",
             amount: difference,
@@ -180,7 +198,7 @@ export async function createInvoice(req: Request, res: Response) {
         } else {
           // Actual amount is less than accrued
           await insertJournalEntry({
-            service_date,
+            date: service_date,
             transaction_id,
             account: "Accrued Liabilities",
             amount: Math.abs(difference),
@@ -191,7 +209,7 @@ export async function createInvoice(req: Request, res: Response) {
           });
 
           await insertJournalEntry({
-            service_date,
+            date: service_date,
             transaction_id,
             account: "Expense Account",
             amount: Math.abs(difference),
@@ -208,7 +226,7 @@ export async function createInvoice(req: Request, res: Response) {
 
       if (status === "PAID") {
         await insertJournalEntry({
-          service_date,
+          date: service_date,
           transaction_id,
           account: "Cash Account",
           amount: ACTUAL_AMOUNT,
@@ -219,7 +237,7 @@ export async function createInvoice(req: Request, res: Response) {
         });
       } else {
         await insertJournalEntry({
-          service_date,
+          date: service_date,
           transaction_id,
           account: "Account Payable",
           amount: ACTUAL_AMOUNT,
@@ -231,7 +249,7 @@ export async function createInvoice(req: Request, res: Response) {
       }
 
       await insertJournalEntry({
-        service_date,
+        date: service_date,
         transaction_id,
         account: "Expense Account",
         amount: ACTUAL_AMOUNT,
@@ -248,4 +266,102 @@ export async function createInvoice(req: Request, res: Response) {
       .status(500)
       .json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
+}
+
+export async function makePayment(req: Request, res: Response) {
+  const { invoice_id } = req.params;
+  const { amount, date } = req.body;
+
+  const invoice = await db.get("SELECT * FROM invoice WHERE id = ?", [
+    invoice_id,
+  ]);
+
+  if (!invoice) {
+    res.status(404).json({ error: "Invoice not found" });
+    return;
+  }
+
+  if (invoice.status === "PAID") {
+    res.status(400).json({ error: "Invoice already paid" });
+    return;
+  }
+
+  if (amount > invoice.amount) {
+    res.status(400).json({ error: "Amount is greater than invoice amount" });
+    return;
+  }
+  // In case of partial payment
+  // Check if the invoice has partial payments
+  const journalEntries = await db.all(
+    "SELECT * FROM journal_entry WHERE invoice_id = ? AND account = 'Cash Account' AND entry_type = 'CREDIT'",
+    [invoice_id]
+  );
+
+  const partialPayment =
+    journalEntries.length === 0
+      ? 0
+      : journalEntries.reduce((acc, entry) => acc + entry.amount, 0);
+
+  const remainingAmount = invoice.amount - partialPayment;
+  const transaction_id = Date.now();
+
+  if (amount > remainingAmount) {
+    res.status(400).json({ error: "Amount is greater than remaining amount" });
+    return;
+  }
+
+  if (amount < remainingAmount) {
+    // Create a journal entry for the partial payment
+    await insertJournalEntry({
+      invoice_id: invoice.id,
+      amount,
+      account: "Cash Account",
+      entry_type: "CREDIT",
+      description: "Partial payment for invoice",
+      date,
+      transaction_id,
+      category: "EXPENSE",
+    });
+    await insertJournalEntry({
+      invoice_id: invoice.id,
+      amount: remainingAmount,
+      account: "Accounts Payable",
+      entry_type: "DEBIT",
+      description: "Partial payment for invoice",
+      date,
+      transaction_id,
+      category: "LIABILITY",
+    });
+    await db.run("UPDATE invoice SET status = 'PARTIAL_PAID' WHERE id = ?", [
+      invoice_id,
+    ]);
+  } else {
+    // Full payment
+    await insertJournalEntry({
+      invoice_id: invoice.id,
+      amount: invoice.amount,
+      account: "Cash Account",
+      entry_type: "CREDIT",
+      description: "Remaining payment for invoice",
+      date,
+      transaction_id,
+      category: "EXPENSE",
+    });
+    await insertJournalEntry({
+      invoice_id: invoice.id,
+      amount: invoice.amount,
+      account: "Accounts Payable",
+      entry_type: "DEBIT",
+      description: "Remaining payment for invoice",
+      date,
+      transaction_id,
+      category: "LIABILITY",
+    });
+
+    await db.run("UPDATE invoice SET status = 'PAID' WHERE id = ?", [
+      invoice_id,
+    ]);
+  }
+
+  res.json({ message: "Inserted journal entry successfully !!" });
 }

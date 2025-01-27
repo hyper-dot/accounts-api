@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS invoice (
   issued_date DATETIME NOT NULL,
   service_date DATETIME NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('PAID', 'UNPAID')),
+  status TEXT NOT NULL CHECK (status IN ('PAID', 'UNPAID', 'PARTIAL_PAID')),
 
   -- Purchase order id
   purchase_order_id INTEGER NOT NULL,
