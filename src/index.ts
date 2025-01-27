@@ -4,7 +4,7 @@ import invoiceRoutes from "./app/invoice/invoice.routes";
 import financialsRoutes from "./app/financials/financials.routes";
 
 // INIT
-const app = express();
+export const app = express();
 app.use(express.json());
 
 // ROUTES
