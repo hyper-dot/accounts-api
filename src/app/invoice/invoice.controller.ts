@@ -36,7 +36,7 @@ export async function getInvoicesByVendorId(req: Request, res: Response) {
       JOIN purchase_order po ON i.purchase_order_id = po.id 
       WHERE po.vendor_id = ?
     `,
-      [vendorId]
+      [vendorId],
     );
     res.json(rows);
   } catch (err) {
@@ -96,7 +96,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
     // Check if invoice already exists for the service date
     const existingInvoice = await db.get(
       "SELECT * FROM invoice WHERE service_date = ? AND purchase_order_id = ?",
-      [service_date, purchaseOrder.id]
+      [service_date, purchaseOrder.id],
     );
 
     if (existingInvoice) {
@@ -295,7 +295,7 @@ export async function makePayment(req: Request, res: Response) {
   // Check if the invoice has partial payments
   const journalEntries = await db.all(
     "SELECT * FROM journal_entry WHERE invoice_id = ? AND account = 'Cash Account' AND entry_type = 'CREDIT'",
-    [invoice_id]
+    [invoice_id],
   );
 
   const partialPayment =
@@ -322,7 +322,7 @@ export async function makePayment(req: Request, res: Response) {
       amount,
       account: "Cash Account",
       entry_type: "CREDIT",
-      description: "Partial payment for invoice",
+      description: `Partial payment for invoice (${invoice.description})`,
       date,
       transaction_id,
       category: "ASSET",
@@ -332,7 +332,7 @@ export async function makePayment(req: Request, res: Response) {
       amount,
       account: "Accounts Payable",
       entry_type: "DEBIT",
-      description: "Partial payment for invoice",
+      description: `Partial payment for invoice (${invoice.description})`,
       date,
       transaction_id,
       category: "LIABILITY",
@@ -348,7 +348,7 @@ export async function makePayment(req: Request, res: Response) {
       amount: amount,
       account: "Cash Account",
       entry_type: "CREDIT",
-      description: "Remaining payment for invoice",
+      description: `Remaining  payment for invoice (${invoice.description})`,
       date,
       transaction_id,
       category: "ASSET",
@@ -358,7 +358,7 @@ export async function makePayment(req: Request, res: Response) {
       amount: amount,
       account: "Accounts Payable",
       entry_type: "DEBIT",
-      description: "Remaining payment for invoice",
+      description: `Remaining  payment for invoice (${invoice.description})`,
       date,
       transaction_id,
       category: "LIABILITY",
