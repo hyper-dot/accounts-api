@@ -7,6 +7,7 @@ import {
   getVendorById,
   insertInvoiceReturningId,
 } from "./invoice.service";
+import { ACCOUNT } from "../../types";
 
 export async function getAllInvoices(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM invoice");
@@ -36,7 +37,7 @@ export async function getInvoicesByVendorId(req: Request, res: Response) {
       JOIN purchase_order po ON i.purchase_order_id = po.id 
       WHERE po.vendor_id = ?
     `,
-      [vendorId],
+      [vendorId]
     );
     res.json(rows);
   } catch (err) {
@@ -96,7 +97,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
     // Check if invoice already exists for the service date
     const existingInvoice = await db.get(
       "SELECT * FROM invoice WHERE service_date = ? AND purchase_order_id = ?",
-      [service_date, purchaseOrder.id],
+      [service_date, purchaseOrder.id]
     );
 
     if (existingInvoice) {
@@ -128,7 +129,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       await insertJournalEntry({
         date: service_date,
         transaction_id,
-        account: "Accrued Liabilities",
+        account: ACCOUNT.ACCRUED_LIABILITIES,
         amount: monthlyAmount,
         description: `Reversing accrual for (${description})`,
         invoice_id,
@@ -139,7 +140,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       await insertJournalEntry({
         date: service_date,
         transaction_id,
-        account: "Expense Account",
+        account: ACCOUNT.EXPENSE_ACCOUNT,
         amount: monthlyAmount,
         description: `Reversing accrual for (${description})`,
         invoice_id,
@@ -151,7 +152,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       await insertJournalEntry({
         date: service_date,
         transaction_id,
-        account: "Expense Account",
+        account: ACCOUNT.EXPENSE_ACCOUNT,
         amount: ACTUAL_AMOUNT,
         description,
         invoice_id,
@@ -162,7 +163,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       await insertJournalEntry({
         date: service_date,
         transaction_id,
-        account: "Cash Account",
+        account: ACCOUNT.CASH_ACCOUNT,
         amount: ACTUAL_AMOUNT,
         description,
         invoice_id,
@@ -178,7 +179,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
           await insertJournalEntry({
             date: service_date,
             transaction_id,
-            account: "Expense Account",
+            account: ACCOUNT.EXPENSE_ACCOUNT,
             amount: difference,
             description: `Adjustment for (${description})`,
             invoice_id,
@@ -189,7 +190,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
           await insertJournalEntry({
             date: service_date,
             transaction_id,
-            account: "Accrued Liabilities",
+            account: ACCOUNT.ACCRUED_LIABILITIES,
             amount: difference,
             description: `Adjustment for (${description})`,
             invoice_id,
@@ -201,7 +202,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
           await insertJournalEntry({
             date: service_date,
             transaction_id,
-            account: "Accrued Liabilities",
+            account: ACCOUNT.ACCRUED_LIABILITIES,
             amount: Math.abs(difference),
             description: `Adjustment for (${description})`,
             invoice_id,
@@ -212,7 +213,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
           await insertJournalEntry({
             date: service_date,
             transaction_id,
-            account: "Expense Account",
+            account: ACCOUNT.EXPENSE_ACCOUNT,
             amount: Math.abs(difference),
             description: `Adjustment for (${description})`,
             invoice_id,
@@ -229,7 +230,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
         await insertJournalEntry({
           date: service_date,
           transaction_id,
-          account: "Cash Account",
+          account: ACCOUNT.CASH_ACCOUNT,
           amount: ACTUAL_AMOUNT,
           description,
           invoice_id,
@@ -240,7 +241,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
         await insertJournalEntry({
           date: service_date,
           transaction_id,
-          account: "Account Payable",
+          account: ACCOUNT.ACCOUNTS_PAYABLE,
           amount: ACTUAL_AMOUNT,
           description,
           invoice_id,
@@ -252,7 +253,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       await insertJournalEntry({
         date: service_date,
         transaction_id,
-        account: "Expense Account",
+        account: ACCOUNT.EXPENSE_ACCOUNT,
         amount: ACTUAL_AMOUNT,
         entry_type: "DEBIT",
         description,
@@ -295,7 +296,7 @@ export async function makePayment(req: Request, res: Response) {
   // Check if the invoice has partial payments
   const journalEntries = await db.all(
     "SELECT * FROM journal_entry WHERE invoice_id = ? AND account = 'Cash Account' AND entry_type = 'CREDIT'",
-    [invoice_id],
+    [invoice_id]
   );
 
   const partialPayment =
@@ -320,7 +321,7 @@ export async function makePayment(req: Request, res: Response) {
     await insertJournalEntry({
       invoice_id: invoice.id,
       amount,
-      account: "Cash Account",
+      account: ACCOUNT.CASH_ACCOUNT,
       entry_type: "CREDIT",
       description: `Partial payment for invoice (${invoice.description})`,
       date,
@@ -330,7 +331,7 @@ export async function makePayment(req: Request, res: Response) {
     await insertJournalEntry({
       invoice_id: invoice.id,
       amount,
-      account: "Accounts Payable",
+      account: ACCOUNT.ACCOUNTS_PAYABLE,
       entry_type: "DEBIT",
       description: `Partial payment for invoice (${invoice.description})`,
       date,
@@ -346,7 +347,7 @@ export async function makePayment(req: Request, res: Response) {
     await insertJournalEntry({
       invoice_id: invoice.id,
       amount: amount,
-      account: "Cash Account",
+      account: ACCOUNT.CASH_ACCOUNT,
       entry_type: "CREDIT",
       description: `Remaining  payment for invoice (${invoice.description})`,
       date,
@@ -356,7 +357,7 @@ export async function makePayment(req: Request, res: Response) {
     await insertJournalEntry({
       invoice_id: invoice.id,
       amount: amount,
-      account: "Accounts Payable",
+      account: ACCOUNT.ACCOUNTS_PAYABLE,
       entry_type: "DEBIT",
       description: `Remaining  payment for invoice (${invoice.description})`,
       date,

@@ -28,3 +28,14 @@ export interface Invoice {
   purchase_order_id: string;
   status: string;
 }
+
+export enum ACCOUNT {
+  CASH_ACCOUNT = "Cash Account",
+  BANK_ACCOUNT = "Bank Account",
+  ACCOUNTS_RECEIVABLE = "Accounts Receivable",
+  ACCOUNTS_PAYABLE = "Accounts Payable",
+  ACCRUED_LIABILITIES = "Accrued Liabilities",
+  EQUITY = "Equity",
+  REVENUE_ACCOUNT = "Revenue Account",
+  EXPENSE_ACCOUNT = "Expense Account",
+}
