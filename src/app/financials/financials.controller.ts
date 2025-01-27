@@ -7,19 +7,48 @@ export async function getJournalEntries(req: Request, res: Response) {
   res.json(rows);
 }
 export async function getAccounts(req: Request, res: Response) {
-  const rows = await db.all(`
-            SELECT
-            account,
-            SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END) AS debit,
-            SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END) AS credit
+  // First get account summaries
+  const accountSummaries = await db.all(`
+    SELECT
+      account,
+      SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END) AS debit,
+      SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END) AS credit
+    FROM
+      journal_entry
+    GROUP BY
+      account
+    ORDER BY
+      account;
+  `);
+
+  // Then get entries for each account
+  const accountsWithEntries = await Promise.all(
+    accountSummaries.map(async (summary) => {
+      const entries = await db.all(
+        `
+        SELECT 
+          date,
+          description,
+          entry_type,
+          amount
         FROM
-            journal_entry
-        GROUP BY
-            account
+          journal_entry
+        WHERE
+          account = ?
         ORDER BY
-            account;
-      `);
-  res.json(rows);
+          date
+      `,
+        [summary.account]
+      );
+
+      return {
+        ...summary,
+        entries,
+      };
+    })
+  );
+
+  res.json(accountsWithEntries);
 }
 
 export async function generateIncomeStatement(): Promise<IncomeStatement> {
