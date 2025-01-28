@@ -108,11 +108,11 @@ export async function generateIncomeStatement(
 }
 
 export async function getIncomeStatement(req: Request, res: Response) {
-  const { from, to } = req.body;
+  const { from, to } = req.query;
 
   if (from && to) {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from as string);
+    const toDate = new Date(to as string);
 
     if (!isValid(fromDate) || !isValid(toDate)) {
       res.status(400).json({ error: "Invalid date format" });
@@ -128,7 +128,10 @@ export async function getIncomeStatement(req: Request, res: Response) {
   }
 
   try {
-    const statement = await generateIncomeStatement(from, to);
+    const statement = await generateIncomeStatement(
+      from as string,
+      to as string
+    );
     res.json(statement);
   } catch (err) {
     res
@@ -207,11 +210,11 @@ export async function generateBalanceSheet(
 }
 
 export async function getBalanceSheet(req: Request, res: Response) {
-  const { from, to } = req.body;
+  const { from, to } = req.query;
 
   if (from && to) {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from as string);
+    const toDate = new Date(to as string);
 
     if (!isValid(fromDate) || !isValid(toDate)) {
       res.status(400).json({ error: "Invalid date format" });
@@ -226,7 +229,10 @@ export async function getBalanceSheet(req: Request, res: Response) {
   }
 
   try {
-    const balanceSheet = await generateBalanceSheet(from, to);
+    const balanceSheet = await generateBalanceSheet(
+      from as string,
+      to as string
+    );
     res.json(balanceSheet);
   } catch (err) {
     res
