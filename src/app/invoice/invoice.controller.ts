@@ -84,6 +84,7 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       return;
     }
 
+    // Check if vendor exists
     const vendor = await getVendorById(vendorId);
     if (!vendor) {
       res.status(404).json({ error: "Vendor not found" });
@@ -163,65 +164,13 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
       await insertJournalEntry({
         date: service_date,
         transaction_id,
-        account: ACCOUNT.CASH_ACCOUNT,
+        account: ACCOUNT.ACCOUNTS_PAYABLE,
         amount: ACTUAL_AMOUNT,
         description,
         invoice_id,
-        category: "ASSET",
+        category: "LIABILITY",
         entry_type: "CREDIT",
       });
-
-      // 3. Adjust the difference if actual amount differs from monthly amount
-      const difference = ACTUAL_AMOUNT - monthlyAmount;
-      if (difference !== 0) {
-        if (difference > 0) {
-          // Actual amount is greater than accrued
-          await insertJournalEntry({
-            date: service_date,
-            transaction_id,
-            account: ACCOUNT.EXPENSE_ACCOUNT,
-            amount: difference,
-            description: `Adjustment for (${description})`,
-            invoice_id,
-            category: "EXPENSE",
-            entry_type: "DEBIT",
-          });
-
-          await insertJournalEntry({
-            date: service_date,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: difference,
-            description: `Adjustment for (${description})`,
-            invoice_id,
-            category: "LIABILITY",
-            entry_type: "CREDIT",
-          });
-        } else {
-          // Actual amount is less than accrued
-          await insertJournalEntry({
-            date: service_date,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: Math.abs(difference),
-            description: `Adjustment for (${description})`,
-            invoice_id,
-            category: "LIABILITY",
-            entry_type: "DEBIT",
-          });
-
-          await insertJournalEntry({
-            date: service_date,
-            transaction_id,
-            account: ACCOUNT.EXPENSE_ACCOUNT,
-            amount: Math.abs(difference),
-            description: `Adjustment for (${description})`,
-            invoice_id,
-            category: "EXPENSE",
-            entry_type: "CREDIT",
-          });
-        }
-      }
     } else {
       // Current month entries (existing logic)
       console.log("Current month");
