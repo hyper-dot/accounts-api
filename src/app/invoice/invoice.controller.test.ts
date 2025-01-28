@@ -168,6 +168,70 @@ describe("Invoice Controller", () => {
     });
   });
 
+  it("If I add invoice of 1000, it should generate accurate balance sheet", async () => {
+    // First verify the vendor exists
+    const vendorResponse = await request(app)
+      .get("/vendors/1")
+      .set("Content-Type", "application/json");
+    expect(vendorResponse.status).toBe(200);
+
+    const mockRequest = {
+      service_date: "2025-01-20",
+      issued_date: "2025-02-01",
+      amount: 1000,
+      description: "Invoice for JAN from Microsoft",
+      status: "UNPAID",
+    };
+
+    const response = await request(app)
+      .post("/invoices/vendor/1")
+      .send(mockRequest)
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+
+    const balanceSheetResponse = await request(app)
+      .get("/financials/balance-sheet")
+      .set("Content-Type", "application/json");
+
+    expect(balanceSheetResponse.status).toBe(200);
+    expect(balanceSheetResponse.body).toEqual({
+      assets: [
+        {
+          account: "Cash Account",
+          category: "ASSET",
+          balance: 2000,
+        },
+      ],
+      liabilities: [
+        {
+          account: "Accounts Payable",
+          category: "LIABILITY",
+          balance: 1000,
+        },
+        {
+          account: "Accrued Liabilities",
+          category: "LIABILITY",
+          balance: 0,
+        },
+      ],
+      equity: [
+        {
+          account: "Equity",
+          category: "EQUITY",
+          balance: 1000,
+        },
+        {
+          account: "Retained Earnings",
+          balance: 0,
+        },
+      ],
+      totalAssets: 2000,
+      totalLiabilities: 1000,
+      totalEquity: 1000,
+    });
+  });
+
   afterEach(async () => {
     await clearTables();
   });
