@@ -12,6 +12,8 @@ app.use("/vendors", vendorRoutes);
 app.use("/invoices", invoiceRoutes);
 app.use("/financials", financialsRoutes);
 
-app.listen(8080, () => {
-  console.log("Server is running on port 8080");
+const PORT = process.env.NODE_ENV === "test" ? 8081 : 8080;
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
