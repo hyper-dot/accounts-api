@@ -232,6 +232,64 @@ describe("Invoice Controller", () => {
     });
   });
 
+  it("If I add PAID invoice of 900, it should generate accurate balance sheet", async () => {
+    const vendorResponse = await request(app)
+      .get("/vendors/1")
+      .set("Content-Type", "application/json");
+    expect(vendorResponse.status).toBe(200);
+
+    const mockRequest = {
+      service_date: "2025-01-20",
+      issued_date: "2025-02-01",
+      amount: 900,
+      description: "Invoice for JAN from Microsoft",
+      status: "PAID",
+    };
+
+    const response = await request(app)
+      .post("/invoices/vendor/1")
+      .send(mockRequest)
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+
+    const balanceSheetResponse = await request(app)
+      .get("/financials/balance-sheet")
+      .set("Content-Type", "application/json");
+
+    expect(balanceSheetResponse.status).toBe(200);
+    expect(balanceSheetResponse.body).toEqual({
+      assets: [
+        {
+          account: "Cash Account",
+          category: "ASSET",
+          balance: 1100, // 2000 - 900
+        },
+      ],
+      liabilities: [
+        {
+          account: "Accrued Liabilities",
+          category: "LIABILITY",
+          balance: 0,
+        },
+      ],
+      equity: [
+        {
+          account: "Equity",
+          category: "EQUITY",
+          balance: 1000,
+        },
+        {
+          account: "Retained Earnings",
+          balance: 100,
+        },
+      ],
+      totalAssets: 1100,
+      totalLiabilities: 0,
+      totalEquity: 1100,
+    });
+  });
+
   afterEach(async () => {
     await clearTables();
   });

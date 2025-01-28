@@ -161,16 +161,29 @@ export async function createInvoiceForVendor(req: Request, res: Response) {
         entry_type: "DEBIT",
       });
 
-      await insertJournalEntry({
-        date: service_date,
-        transaction_id,
-        account: ACCOUNT.ACCOUNTS_PAYABLE,
-        amount: ACTUAL_AMOUNT,
-        description,
-        invoice_id,
-        category: "LIABILITY",
-        entry_type: "CREDIT",
-      });
+      if (status === "PAID") {
+        await insertJournalEntry({
+          date: service_date,
+          transaction_id,
+          account: ACCOUNT.CASH_ACCOUNT,
+          amount: ACTUAL_AMOUNT,
+          description,
+          invoice_id,
+          category: "ASSET",
+          entry_type: "CREDIT",
+        });
+      } else {
+        await insertJournalEntry({
+          date: service_date,
+          transaction_id,
+          account: ACCOUNT.ACCOUNTS_PAYABLE,
+          amount: ACTUAL_AMOUNT,
+          description,
+          invoice_id,
+          category: "LIABILITY",
+          entry_type: "CREDIT",
+        });
+      }
     } else {
       // Current month entries (existing logic)
       console.log("Current month");
