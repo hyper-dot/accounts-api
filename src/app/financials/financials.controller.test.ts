@@ -8,68 +8,13 @@ import {
   getBalanceSheet,
 } from "./financials.controller";
 import { db } from "../../db";
+import { clearTables, createTables } from "../../utils/test.utils";
 
 describe("Financial Controller", () => {
   beforeEach(async () => {
     // Drop existing tables in correct order
-    await db.run("DROP TABLE IF EXISTS journal_entry");
-    await db.run("DROP TABLE IF EXISTS invoice");
-    await db.run("DROP TABLE IF EXISTS purchase_order");
-    await db.run("DROP TABLE IF EXISTS vendor");
-
-    // Create tables in correct order
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS vendor (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS purchase_order (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        vendor_id INTEGER,
-        description TEXT,
-        total_amount DECIMAL(10,2) NOT NULL,
-        start_date DATETIME NOT NULL,
-        end_date DATETIME NOT NULL,
-        amount_per_month DECIMAL(10,2) NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        type TEXT NOT NULL CHECK (type IN ('RECURRING', 'ONE_TIME')),
-        FOREIGN KEY (vendor_id) REFERENCES vendor(id)
-      )
-    `);
-
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS invoice (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        description TEXT NOT NULL,
-        issued_date DATETIME NOT NULL,
-        service_date DATETIME NOT NULL,
-        amount DECIMAL(10,2) NOT NULL,
-        status TEXT NOT NULL CHECK (status IN ('PAID', 'UNPAID', 'PARTIAL_PAID')),
-        purchase_order_id INTEGER NOT NULL,
-        FOREIGN KEY (purchase_order_id) REFERENCES purchase_order(id)
-      )
-    `);
-
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS journal_entry (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transaction_id INTEGER NOT NULL,
-        date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        account TEXT NOT NULL,
-        amount DECIMAL(10,2) NOT NULL,
-        entry_type TEXT NOT NULL CHECK (entry_type IN ('DEBIT', 'CREDIT')),
-        category TEXT NOT NULL CHECK (category IN ('REVENUE', 'EXPENSE', 'ASSET', 'LIABILITY', 'EQUITY')),
-        description TEXT NOT NULL,
-        invoice_id INTEGER NULL,
-        FOREIGN KEY (invoice_id) REFERENCES invoice(id)
-      )
-    `);
+    await clearTables();
+    await createTables();
   });
 
   describe("getJournalEntries", () => {
@@ -216,7 +161,9 @@ describe("Financial Controller", () => {
 
   describe("getIncomeStatement", () => {
     it("should return income statement via API", async () => {
-      const mockReq = {};
+      const mockReq = {
+        query: {},
+      };
       const mockRes = {
         json: jest.fn(),
       };
@@ -240,7 +187,9 @@ describe("Financial Controller", () => {
       // Drop the table to simulate an error
       await db.run("DROP TABLE journal_entry");
 
-      const mockReq = {};
+      const mockReq = {
+        query: {},
+      };
       const mockRes = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
@@ -314,7 +263,9 @@ describe("Financial Controller", () => {
 
   describe("getBalanceSheet", () => {
     it("should return balance sheet via API", async () => {
-      const mockReq = {};
+      const mockReq = {
+        query: {},
+      };
       const mockRes = {
         json: jest.fn(),
       };
@@ -336,7 +287,9 @@ describe("Financial Controller", () => {
       // Drop the table to simulate an error
       await db.run("DROP TABLE journal_entry");
 
-      const mockReq = {};
+      const mockReq = {
+        query: {},
+      };
       const mockRes = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
