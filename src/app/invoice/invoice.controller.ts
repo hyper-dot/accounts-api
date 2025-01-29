@@ -395,17 +395,31 @@ export async function createInvoiceForPO(req: Request, res: Response) {
       purchase_order_id: Number(poId),
     });
 
-    await insertJournalEntry({
-      invoice_id,
-      amount,
-      account: ACCOUNT.ACCOUNTS_PAYABLE,
-      entry_type: "CREDIT",
-      description: `Invoice for Purchase Order (${purchaseOrder.description})`,
-      date: currentDate,
-      transaction_id,
-      category: "LIABILITY",
-      purchase_order_id: Number(poId),
-    });
+    if (status === "UNPAID") {
+      await insertJournalEntry({
+        invoice_id,
+        amount,
+        account: ACCOUNT.ACCOUNTS_PAYABLE,
+        entry_type: "CREDIT",
+        description: `Invoice for Purchase Order (${purchaseOrder.description})`,
+        date: currentDate,
+        transaction_id,
+        category: "LIABILITY",
+        purchase_order_id: Number(poId),
+      });
+    } else {
+      await insertJournalEntry({
+        invoice_id,
+        amount,
+        account: ACCOUNT.CASH_ACCOUNT,
+        entry_type: "CREDIT",
+        description: `Invoice for Purchase Order (${purchaseOrder.description})`,
+        date: currentDate,
+        transaction_id,
+        category: "ASSET",
+        purchase_order_id: Number(poId),
+      });
+    }
 
     res.json({ message: "Invoice created successfully !!" });
   } catch (err) {
