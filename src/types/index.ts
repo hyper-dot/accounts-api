@@ -23,9 +23,10 @@ export interface BalanceSheet {
 export interface Invoice {
   description: string;
   issued_date: string;
-  service_date: string;
+  service_date_start: string;
+  service_date_end: string;
   amount: number;
-  purchase_order_id: string;
+  purchase_order_id: number;
   status: string;
 }
 

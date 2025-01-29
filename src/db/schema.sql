@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS journal_entry (
   description TEXT NOT NULL,
 
   invoice_id INTEGER NULL,
+  purchase_order_id INTEGER NULL,
+
+  FOREIGN KEY (purchase_order_id) REFERENCES purchase_order(id),
   FOREIGN KEY (invoice_id) REFERENCES invoice(id)
 );
 
@@ -42,7 +45,8 @@ CREATE TABLE IF NOT EXISTS invoice (
   
   description TEXT NOT NULL,
   issued_date DATETIME NOT NULL,
-  service_date DATETIME NOT NULL,
+  service_date_start DATETIME NOT NULL,
+  service_date_end DATETIME NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('PAID', 'UNPAID', 'PARTIAL_PAID')),
 

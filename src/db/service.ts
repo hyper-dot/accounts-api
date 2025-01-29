@@ -10,10 +10,11 @@ export async function insertJournalEntry({
   description,
   invoice_id,
   category,
+  purchase_order_id,
 }: InsertJournalEntryProps) {
   return await db.run(
-    `INSERT INTO journal_entry(date, transaction_id, account, amount, entry_type, category, description, invoice_id)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO journal_entry(date, transaction_id, account, amount, entry_type, category, description, invoice_id, purchase_order_id)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     [
       date,
@@ -24,6 +25,7 @@ export async function insertJournalEntry({
       category,
       description,
       invoice_id,
+      purchase_order_id,
     ]
   );
 }
