@@ -9,40 +9,74 @@ export async function getJournalEntries(req: Request, res: Response) {
   res.json(rows);
 }
 export async function getAccounts(req: Request, res: Response) {
-  // First get account summaries
-  const accountSummaries = await db.all(`
+  const { from, to } = req.query;
+
+  // Build base query for account summaries with date filters
+  let summaryQuery = `
     SELECT
       account,
       SUM(CASE WHEN entry_type = 'DEBIT' THEN amount ELSE 0 END) AS debit,
       SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END) AS credit
     FROM
       journal_entry
+  `;
+
+  const summaryParams: string[] = [];
+  if (from || to) {
+    summaryQuery += ` WHERE 1=1`;
+    if (from) {
+      summaryQuery += ` AND date >= ?`;
+      summaryParams.push(from as string);
+    }
+    if (to) {
+      summaryQuery += ` AND date <= ?`;
+      summaryParams.push(to as string);
+    }
+  }
+
+  summaryQuery += `
     GROUP BY
       account
     ORDER BY
       account;
-  `);
+  `;
 
-  // Then get entries for each account
+  // Get account summaries
+  const accountSummaries = await db.all(summaryQuery, summaryParams);
+
+  // Build base query for entries with date filters
+  let entriesQuery = `
+    SELECT 
+      date,
+      description,
+      entry_type,
+      amount,
+      invoice_id
+    FROM
+      journal_entry
+    WHERE
+      account = ?
+  `;
+
+  const entriesParams: string[] = [];
+  if (from || to) {
+    if (from) {
+      entriesQuery += ` AND date >= ?`;
+      entriesParams.push(from as string);
+    }
+    if (to) {
+      entriesQuery += ` AND date <= ?`;
+      entriesParams.push(to as string);
+    }
+  }
+
+  entriesQuery += ` ORDER BY date`;
+
+  // Get entries for each account
   const accountsWithEntries = await Promise.all(
     accountSummaries.map(async (summary) => {
-      const entries = await db.all(
-        `
-        SELECT 
-          date,
-          description,
-          entry_type,
-          amount,
-          invoice_id
-        FROM
-          journal_entry
-        WHERE
-          account = ?
-        ORDER BY
-          date
-      `,
-        [summary.account]
-      );
+      const params = [summary.account, ...entriesParams];
+      const entries = await db.all(entriesQuery, params);
 
       return {
         ...summary,

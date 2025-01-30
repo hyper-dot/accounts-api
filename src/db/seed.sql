@@ -18,10 +18,10 @@ INSERT INTO purchase_order (
 );
 
 INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
-VALUES (1737890842179, 'Cash Account', 1000, 'DEBIT', 'Equity from owner', '2025-01-20', 'ASSET');
+VALUES (1737890842179, 'Cash Account', 5000, 'DEBIT', 'Equity from owner', '2025-01-20', 'ASSET');
 
 INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
-VALUES (1737890842179, 'Equity', 1000, 'CREDIT', 'Equity from owner', '2025-01-20', 'EQUITY');
+VALUES (1737890842179, 'Equity', 5000, 'CREDIT', 'Equity from owner', '2025-01-20', 'EQUITY');
 
 INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
 VALUES (1737890842180, 'Cash Account', 1000, 'DEBIT', 'Revenue from sales', '2025-01-25', 'ASSET');
@@ -48,8 +48,3 @@ VALUES (1737890842185, 'Expense Account', 1000, 'DEBIT', 'Being paid for Azure C
 INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
 VALUES (1737890842186, 'Accrued Liabilities', 1000, 'CREDIT', 'Being paid for Azure Cloud Services - March', '2025-03-30', 'LIABILITY', 1);
 
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842187, 'Expense Account', 1000, 'DEBIT', 'Being paid for Azure Cloud Services - April', '2025-04-30', 'EXPENSE', 1);
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842188, 'Accrued Liabilities', 1000, 'CREDIT', 'Being paid for Azure Cloud Services - April', '2025-04-30', 'LIABILITY', 1);
