@@ -1,17 +1,37 @@
 import { db } from "../../db";
 import { Request, Response } from "express";
 import { BalanceSheet, IncomeStatement } from "../../types";
-import { isValid } from "date-fns";
-import { getYear } from "date-fns";
+import { isValid, getYear } from "date-fns";
+import { ACCOUNT } from "../../types";
 
 export async function getJournalEntries(req: Request, res: Response) {
   const rows = await db.all("SELECT * FROM journal_entry");
   res.json(rows);
 }
 export async function getAccounts(req: Request, res: Response) {
-  const { from, to } = req.query;
+  const { from, to, account } = req.query;
 
-  // Build base query for account summaries with date filters
+  // Validate accounts if provided
+  if (account) {
+    const requestedAccounts = (account as string)
+      .split(",")
+      .map((a) => a.trim());
+    const validAccounts = Object.values(ACCOUNT);
+
+    const invalidAccounts = requestedAccounts.filter(
+      (acc) => !validAccounts.includes(acc as ACCOUNT)
+    );
+
+    if (invalidAccounts.length > 0) {
+      res.status(400).json({
+        error: `Invalid accounts: ${invalidAccounts.join(", ")}`,
+        validAccounts: validAccounts,
+      });
+      return;
+    }
+  }
+
+  // Build base query for account summaries with date and account filters
   let summaryQuery = `
     SELECT
       account,
@@ -19,19 +39,24 @@ export async function getAccounts(req: Request, res: Response) {
       SUM(CASE WHEN entry_type = 'CREDIT' THEN amount ELSE 0 END) AS credit
     FROM
       journal_entry
+    WHERE 1=1
   `;
 
-  const summaryParams: string[] = [];
-  if (from || to) {
-    summaryQuery += ` WHERE 1=1`;
-    if (from) {
-      summaryQuery += ` AND date >= ?`;
-      summaryParams.push(from as string);
-    }
-    if (to) {
-      summaryQuery += ` AND date <= ?`;
-      summaryParams.push(to as string);
-    }
+  const summaryParams: any[] = [];
+
+  if (account) {
+    const accounts = (account as string).split(",").map((a) => a.trim());
+    summaryQuery += ` AND account IN (${accounts.map(() => "?").join(",")})`;
+    summaryParams.push(...accounts);
+  }
+
+  if (from) {
+    summaryQuery += ` AND date >= ?`;
+    summaryParams.push(from as string);
+  }
+  if (to) {
+    summaryQuery += ` AND date <= ?`;
+    summaryParams.push(to as string);
   }
 
   summaryQuery += `
@@ -44,7 +69,7 @@ export async function getAccounts(req: Request, res: Response) {
   // Get account summaries
   const accountSummaries = await db.all(summaryQuery, summaryParams);
 
-  // Build base query for entries with date filters
+  // Build base query for entries with date and account filters
   let entriesQuery = `
     SELECT 
       date,
@@ -58,16 +83,14 @@ export async function getAccounts(req: Request, res: Response) {
       account = ?
   `;
 
-  const entriesParams: string[] = [];
-  if (from || to) {
-    if (from) {
-      entriesQuery += ` AND date >= ?`;
-      entriesParams.push(from as string);
-    }
-    if (to) {
-      entriesQuery += ` AND date <= ?`;
-      entriesParams.push(to as string);
-    }
+  const entriesParams: any[] = [];
+  if (from) {
+    entriesQuery += ` AND date >= ?`;
+    entriesParams.push(from as string);
+  }
+  if (to) {
+    entriesQuery += ` AND date <= ?`;
+    entriesParams.push(to as string);
   }
 
   entriesQuery += ` ORDER BY date`;
