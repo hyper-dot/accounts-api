@@ -16,14 +16,13 @@ cron.schedule("0 0 1 * *", async () => {
   }
 });
 
-const monthlyCronJob = async () => {
-  const currentDate = new Date();
+export const monthlyCronJob = async (currentDate: Date = new Date()) => {
   const currentDateString = currentDate.toISOString().split("T")[0];
 
   // 1. Get all active purchase orders
   const activePurchaseOrders = await db.all(`
     SELECT * FROM purchase_order 
-    WHERE status = 'ACTIVE'
+    WHERE is_active = 1
   `);
 
   for (const po of activePurchaseOrders) {
@@ -78,21 +77,39 @@ const monthlyCronJob = async () => {
       case "QUARTERLY":
       case "BI_ANNUALLY":
       case "ANNUALLY":
-        // Calculate accrued amount based on time elapsed since last invoice
         const lastInvoice = await getLastInvoice(po.id);
+        const frequency = po.frequency as FREQUENCY;
+
+        // Define period lengths in months
+        const periodMonths = {
+          QUARTERLY: 3,
+          BI_ANNUALLY: 6,
+          ANNUALLY: 12,
+        }[frequency];
+
         if (lastInvoice) {
           const monthsSinceLastInvoice = getMonthsDifference(
             new Date(lastInvoice.service_date_end),
             currentDate
           );
-          accruedAmount = po.amount_per_month * monthsSinceLastInvoice;
+
+          // Only accrue if we're still within the same period
+          if (monthsSinceLastInvoice < periodMonths) {
+            // Calculate the prorated amount for the elapsed months in this period
+            accruedAmount =
+              (po.total_amount / periodMonths) * monthsSinceLastInvoice;
+          }
         } else {
-          // If no previous invoice, accrue from start date
+          // If no previous invoice, calculate from start date
           const monthsSinceStart = getMonthsDifference(
             new Date(po.start_date),
             currentDate
           );
-          accruedAmount = po.amount_per_month * monthsSinceStart;
+
+          // Calculate the prorated amount for the elapsed months in this period
+          const monthsInCurrentPeriod = monthsSinceStart % periodMonths;
+          accruedAmount =
+            (po.total_amount / periodMonths) * monthsInCurrentPeriod;
         }
         break;
     }

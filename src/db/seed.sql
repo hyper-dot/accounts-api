@@ -1,4 +1,7 @@
+-- Insert vendor
 INSERT INTO vendor (name) VALUES ('Microsoft');
+
+-- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -8,7 +11,7 @@ INSERT INTO purchase_order (
     amount_per_month,
     frequency
 ) VALUES (
-    1, -- references the Microsoft vendor we just created
+    (SELECT id FROM vendor WHERE name = 'Microsoft'),
     'Azure Cloud Services Annual Contract',
     12000.00,
     '2025-01-01',
@@ -17,6 +20,7 @@ INSERT INTO purchase_order (
     'ANNUALLY'
 );
 
+-- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -26,7 +30,7 @@ INSERT INTO purchase_order (
     amount_per_month,
     frequency
 ) VALUES (
-    1, -- Microsoft Office 365 subscription
+    (SELECT id FROM vendor WHERE name = 'Microsoft'),
     'Office 365 Enterprise License',
     24000.00,
     '2025-01-01',
@@ -35,6 +39,7 @@ INSERT INTO purchase_order (
     'QUARTERLY'
 );
 
+-- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -44,7 +49,7 @@ INSERT INTO purchase_order (
     amount_per_month,
     frequency
 ) VALUES (
-    1, -- Microsoft Azure Support Contract
+    (SELECT id FROM vendor WHERE name = 'Microsoft'),
     'Azure Premium Support',
     6000.00,
     '2025-01-01',
@@ -53,6 +58,7 @@ INSERT INTO purchase_order (
     'ONE_TIME'
 );
 
+-- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -62,7 +68,7 @@ INSERT INTO purchase_order (
     amount_per_month,
     frequency
 ) VALUES (
-    1, -- Microsoft Azure Development Tools
+    (SELECT id FROM vendor WHERE name = 'Microsoft'),
     'Visual Studio Enterprise Subscriptions',
     18000.00,
     '2025-01-01',
