@@ -12,12 +12,12 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'Azure Cloud Services Annual Contract',
-    12000.00,
+    'PO-1',
+    120000,
     '2025-01-01',
-    '2025-12-31',
-    1000.00,
-    'ANNUALLY'
+    '2025-10-31',
+    12000,
+    'MONTHLY'
 );
 
 -- Insert purchase order
@@ -31,11 +31,11 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'Office 365 Enterprise License',
-    24000.00,
+    'PO-2',
+    10000,
     '2025-01-01',
     '2025-12-31',
-    2000.00,
+     833,
     'QUARTERLY'
 );
 
@@ -50,12 +50,12 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'Azure Premium Support',
-    6000.00,
+    'PO-2',
+    10000,
     '2025-01-01',
     '2025-12-31',
-    500.00,
-    'ONE_TIME'
+     833,
+    'MONTHLY'
 );
 
 -- Insert purchase order
@@ -69,10 +69,29 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'Visual Studio Enterprise Subscriptions',
-    18000.00,
+    'PO-2',
+    10000,
     '2025-01-01',
     '2025-12-31',
-    1500.00,
+     833,
     'BI_ANNUALLY'
+);
+
+-- Insert purchase order
+INSERT INTO purchase_order (
+    vendor_id,
+    description,
+    total_amount,
+    start_date,
+    end_date,
+    amount_per_month,
+    frequency
+) VALUES (
+    (SELECT id FROM vendor WHERE name = 'Microsoft'),
+    'PO-2',
+    10000,
+    '2025-01-01',
+    '2025-12-31',
+     833,
+    'ANNUALLY'
 );

@@ -5,8 +5,6 @@ import {
   createTables,
   seedDatabase,
 } from "../../utils/test.utils";
-import request from "supertest";
-import { app } from "../../index";
 
 describe("Invoice Controller", () => {
   beforeEach(async () => {

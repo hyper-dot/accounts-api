@@ -1,11 +1,6 @@
 import request from "supertest";
-import express from "express";
-import vendorRoutes from "./vendor.routes";
 import { clearTables, createTables } from "../../utils/test.utils";
-
-const app = express();
-app.use(express.json());
-app.use("/vendors", vendorRoutes);
+import { app } from "../../index";
 
 describe("Vendor Controller", () => {
   beforeEach(async () => {

@@ -2,6 +2,8 @@ import cron from "node-cron";
 import { ACCOUNT, FREQUENCY } from "../types";
 import { db } from "../db";
 import { insertJournalEntry } from "../db/service";
+import { format, isAfter, parseISO } from "date-fns";
+import { isBefore } from "date-fns";
 
 // Run at midnight (00:00) on the first day of every month
 cron.schedule("0 0 1 * *", async () => {
@@ -17,14 +19,13 @@ cron.schedule("0 0 1 * *", async () => {
 });
 
 export const monthlyCronJob = async (currentDate: Date = new Date()) => {
-  const currentDateString = currentDate.toISOString().split("T")[0];
+  const currentDateString = format(currentDate, "yyyy-MM-dd");
 
   // 1. Get all active purchase orders
   const activePurchaseOrders = await db.all(`
     SELECT * FROM purchase_order 
     WHERE is_active = 1
   `);
-
   for (const po of activePurchaseOrders) {
     /* STEPS TO ADD ACCRUED EXPENSES
      * 1. Get all the purchase orders
@@ -33,111 +34,176 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
      *    for that particular order if yes ignore that
      * 4. For types Monthly find the invoices that service period overlaps the current month
      *    if found calculate the remaining amount to be paid and add that to accrued exp
-     * 5. For types quaterly and bi annually check for the pervious invoice and their period. Calculate the remaining amount
+     * 5. For types quaterly and bi annually check for the invoice and their period current period. Calculate the remaining amount
      *    and add that to accrued exp
      * */
-    // Check if PO is within its validity period
+
+    const startDate = parseISO(po.start_date);
+    const endDate = parseISO(po.end_date);
+    const currentDateParsed = parseISO(currentDateString);
+
+    // Skip if current date is before start date or after end date
     if (
-      new Date(po.end_date) < currentDate ||
-      new Date(po.start_date) > currentDate
+      isBefore(currentDateParsed, startDate) ||
+      isAfter(currentDateParsed, endDate)
     ) {
       continue;
     }
 
-    // Get existing invoices for this PO in the current month
-    const existingInvoices = await db.all(
-      `
-      SELECT * FROM invoice 
-      WHERE purchase_order_id = ? 
-      AND strftime('%Y-%m', service_date_start) <= strftime('%Y-%m', ?)
-      AND strftime('%Y-%m', service_date_end) >= strftime('%Y-%m', ?)
-    `,
-      [po.id, currentDate.toISOString(), currentDate.toISOString()]
-    );
-
-    let accruedAmount = 0;
-
     switch (po.frequency) {
-      case "ONE_TIME":
-        // For one-time POs, check if we already have any invoice or journal entry
-        const hasEntry =
-          existingInvoices.length > 0 || (await hasJournalEntry(po.id));
+      case FREQUENCY.ONE_TIME:
+        // For one-time POs, check if we already have a journal entry
+        const hasEntry = await hasJournalEntry(po.id);
         if (!hasEntry) {
-          accruedAmount = po.total_amount;
+          const transaction_id = Date.now();
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.ACCRUED_LIABILITIES,
+            amount: po.total_amount,
+            entry_type: "CREDIT",
+            description: `Accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "LIABILITY",
+          });
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.EXPENSE_ACCOUNT,
+            amount: po.total_amount,
+            entry_type: "DEBIT",
+            description: `Accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "EXPENSE",
+          });
         }
         break;
 
-      case "MONTHLY":
-        // If no invoice exists for current month, accrue the monthly amount
-        if (existingInvoices.length === 0) {
-          accruedAmount = po.amount_per_month;
+      case FREQUENCY.MONTHLY:
+        const lastMonthlyInvoice = await getLastInvoice(po.id);
+        const monthlyAmount = po.amount_per_month;
+
+        if (
+          !lastMonthlyInvoice ||
+          isBefore(
+            parseISO(lastMonthlyInvoice.service_date_end),
+            currentDateParsed
+          )
+        ) {
+          const transaction_id = Date.now();
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.ACCRUED_LIABILITIES,
+            amount: monthlyAmount,
+            entry_type: "CREDIT",
+            description: `Monthly accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "LIABILITY",
+          });
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.EXPENSE_ACCOUNT,
+            amount: monthlyAmount,
+            entry_type: "DEBIT",
+            description: `Monthly accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "EXPENSE",
+          });
         }
         break;
 
-      case "QUARTERLY":
-      case "BI_ANNUALLY":
-      case "ANNUALLY":
-        const lastInvoice = await getLastInvoice(po.id);
-        const frequency = po.frequency as FREQUENCY;
+      case FREQUENCY.QUARTERLY:
+        const quarterlyAmount = Math.floor(po.total_amount / 4);
+        const isQuarterMonth = [3, 6, 9, 12].includes(
+          currentDateParsed.getMonth() + 1
+        );
 
-        // Define period lengths in months
-        const periodMonths = {
-          QUARTERLY: 3,
-          BI_ANNUALLY: 6,
-          ANNUALLY: 12,
-        }[frequency];
-
-        if (lastInvoice) {
-          const monthsSinceLastInvoice = getMonthsDifference(
-            new Date(lastInvoice.service_date_end),
-            currentDate
-          );
-
-          // Only accrue if we're still within the same period
-          if (monthsSinceLastInvoice < periodMonths) {
-            // Calculate the prorated amount for the elapsed months in this period
-            accruedAmount =
-              (po.total_amount / periodMonths) * monthsSinceLastInvoice;
-          }
-        } else {
-          // If no previous invoice, calculate from start date
-          const monthsSinceStart = getMonthsDifference(
-            new Date(po.start_date),
-            currentDate
-          );
-
-          // Calculate the prorated amount for the elapsed months in this period
-          const monthsInCurrentPeriod = monthsSinceStart % periodMonths;
-          accruedAmount =
-            (po.total_amount / periodMonths) * monthsInCurrentPeriod;
+        if (isQuarterMonth) {
+          const transaction_id = Date.now();
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.ACCRUED_LIABILITIES,
+            amount: quarterlyAmount,
+            entry_type: "CREDIT",
+            description: `Quarterly accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "LIABILITY",
+          });
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.EXPENSE_ACCOUNT,
+            amount: quarterlyAmount,
+            entry_type: "DEBIT",
+            description: `Quarterly accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "EXPENSE",
+          });
         }
         break;
-    }
-    const transaction_id = Date.now();
 
-    if (accruedAmount > 0) {
-      // Create journal entries for accrued expense
-      await insertJournalEntry({
-        date: currentDateString,
-        transaction_id,
-        account: ACCOUNT.ACCRUED_LIABILITIES,
-        amount: accruedAmount,
-        entry_type: "CREDIT",
-        category: "LIABILITY",
-        description: `Accrued expense for PO #${po.id}`,
-        purchase_order_id: po.id,
-      });
+      case FREQUENCY.BI_ANNUALLY:
+        const biAnnualAmount = Math.floor(po.total_amount / 2);
+        const isBiAnnualMonth = [6, 12].includes(
+          currentDateParsed.getMonth() + 1
+        );
 
-      await insertJournalEntry({
-        date: currentDateString,
-        transaction_id,
-        account: ACCOUNT.EXPENSE_ACCOUNT,
-        amount: accruedAmount,
-        entry_type: "DEBIT",
-        category: "EXPENSE",
-        description: `Accrued expense for PO #${po.id}`,
-        purchase_order_id: po.id,
-      });
+        if (isBiAnnualMonth) {
+          const transaction_id = Date.now();
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.ACCRUED_LIABILITIES,
+            amount: biAnnualAmount,
+            entry_type: "CREDIT",
+            description: `Bi-annual accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "LIABILITY",
+          });
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.EXPENSE_ACCOUNT,
+            amount: biAnnualAmount,
+            entry_type: "DEBIT",
+            description: `Bi-annual accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "EXPENSE",
+          });
+        }
+        break;
+
+      case FREQUENCY.ANNUALLY:
+        const annualAmount = po.total_amount;
+        const isDecember = currentDateParsed.getMonth() + 1 === 12;
+
+        if (isDecember) {
+          const transaction_id = Date.now();
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.ACCRUED_LIABILITIES,
+            amount: annualAmount,
+            entry_type: "CREDIT",
+            description: `Annual accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "LIABILITY",
+          });
+          await insertJournalEntry({
+            date: currentDateString,
+            transaction_id,
+            account: ACCOUNT.EXPENSE_ACCOUNT,
+            amount: annualAmount,
+            entry_type: "DEBIT",
+            description: `Annual accrual for PO ${po.id}`,
+            purchase_order_id: po.id,
+            category: "EXPENSE",
+          });
+        }
+        break;
     }
   }
 };
