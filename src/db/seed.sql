@@ -6,7 +6,7 @@ INSERT INTO purchase_order (
     start_date,
     end_date,
     amount_per_month,
-    type
+    frequency
 ) VALUES (
     1, -- references the Microsoft vendor we just created
     'Azure Cloud Services Annual Contract',
@@ -14,37 +14,59 @@ INSERT INTO purchase_order (
     '2025-01-01',
     '2025-12-31',
     1000.00,
-    'RECURRING'
+    'ANNUALLY'
 );
 
-INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
-VALUES (1737890842179, 'Cash Account', 5000, 'DEBIT', 'Equity from owner', '2025-01-20', 'ASSET');
+INSERT INTO purchase_order (
+    vendor_id,
+    description,
+    total_amount,
+    start_date,
+    end_date,
+    amount_per_month,
+    frequency
+) VALUES (
+    1, -- Microsoft Office 365 subscription
+    'Office 365 Enterprise License',
+    24000.00,
+    '2025-01-01',
+    '2025-12-31',
+    2000.00,
+    'QUARTERLY'
+);
 
-INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
-VALUES (1737890842179, 'Equity', 5000, 'CREDIT', 'Equity from owner', '2025-01-20', 'EQUITY');
+INSERT INTO purchase_order (
+    vendor_id,
+    description,
+    total_amount,
+    start_date,
+    end_date,
+    amount_per_month,
+    frequency
+) VALUES (
+    1, -- Microsoft Azure Support Contract
+    'Azure Premium Support',
+    6000.00,
+    '2025-01-01',
+    '2025-12-31',
+    500.00,
+    'ONE_TIME'
+);
 
-INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
-VALUES (1737890842180, 'Cash Account', 1000, 'DEBIT', 'Revenue from sales', '2025-01-25', 'ASSET');
-
-INSERT INTO journal_entry (transaction_id, account, amount, entry_type, description, date, category) 
-VALUES (1737890842180, 'Sales Account', 1000, 'CREDIT', 'Revenue from sales', '2025-01-25', 'REVENUE');
-
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842181, 'Expense Account', 1000, 'DEBIT', 'Being paid for Azure Cloud Services - January', '2025-01-30', 'EXPENSE', 1);
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842182, 'Accrued Liabilities', 1000, 'CREDIT', 'Being paid for Azure Cloud Services - January', '2025-01-30', 'LIABILITY', 1);
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842183, 'Expense Account', 1000, 'DEBIT', 'Being paid for Azure Cloud Services - February', '2025-02-28', 'EXPENSE', 1);
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842184, 'Accrued Liabilities', 1000, 'CREDIT', 'Being paid for Azure Cloud Services - February', '2025-02-28', 'LIABILITY', 1);
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842185, 'Expense Account', 1000, 'DEBIT', 'Being paid for Azure Cloud Services - March', '2025-03-30', 'EXPENSE', 1);
-
-INSERT INTO journal_entry(transaction_id, account, amount, entry_type, description, date, category, purchase_order_id)
-VALUES (1737890842186, 'Accrued Liabilities', 1000, 'CREDIT', 'Being paid for Azure Cloud Services - March', '2025-03-30', 'LIABILITY', 1);
-
+INSERT INTO purchase_order (
+    vendor_id,
+    description,
+    total_amount,
+    start_date,
+    end_date,
+    amount_per_month,
+    frequency
+) VALUES (
+    1, -- Microsoft Azure Development Tools
+    'Visual Studio Enterprise Subscriptions',
+    18000.00,
+    '2025-01-01',
+    '2025-12-31',
+    1500.00,
+    'BI_ANNUALLY'
+);

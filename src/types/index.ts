@@ -40,3 +40,11 @@ export enum ACCOUNT {
   REVENUE_ACCOUNT = "Revenue Account",
   EXPENSE_ACCOUNT = "Expense Account",
 }
+
+export enum FREQUENCY {
+  ONE_TIME = "ONE_TIME",
+  MONTHLY = "MONTHLY",
+  QUARTERLY = "QUARTERLY",
+  BI_ANNUALLY = "BI_ANNUAL",
+  ANNUALLY = "ANNUAL",
+}

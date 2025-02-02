@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS purchase_order (
   amount_per_month DECIMAL(10,2) NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  type TEXT NOT NULL CHECK (type IN ('RECURRING', 'ONE_TIME')),
+  frequency TEXT NOT NULL CHECK (frequency IN ('MONTHLY', 'QUARTERLY', 'ONE_TIME', 'BI_ANNUALLY', 'ANNUALLY')),
   FOREIGN KEY (vendor_id) REFERENCES vendor(id)
 );
 
