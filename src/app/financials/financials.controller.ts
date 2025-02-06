@@ -232,7 +232,7 @@ export async function generateBalanceSheet(
   query += ` GROUP BY account, category`;
 
   const accounts = await db.all(query, params);
-
+  console.log(accounts);
   const balanceSheet: BalanceSheet = {
     assets: [],
     liabilities: [],

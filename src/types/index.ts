@@ -36,6 +36,7 @@ export enum ACCOUNT {
   ACCOUNTS_RECEIVABLE = "Accounts Receivable",
   ACCOUNTS_PAYABLE = "Accounts Payable",
   ACCRUED_LIABILITIES = "Accrued Liabilities",
+  ADVANCE_PAYMENT = "Advance Payment",
   EQUITY = "Equity",
   REVENUE_ACCOUNT = "Revenue Account",
   EXPENSE_ACCOUNT = "Expense Account",

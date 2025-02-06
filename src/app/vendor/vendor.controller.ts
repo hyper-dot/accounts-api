@@ -1,5 +1,7 @@
 import { db } from "../../db";
 import { Request, Response } from "express";
+import { ACCOUNT, FREQUENCY } from "../../types";
+import { insertJournalEntry } from "../../db/service";
 
 export async function getAllVendors(req: Request, res: Response) {
   try {
@@ -73,9 +75,16 @@ export async function getPurchaseOrdersByVendorId(req: Request, res: Response) {
 
 export async function createPurchaseOrder(req: Request, res: Response) {
   const vendorId = req.params.id;
-  const { description, total_amount, start_date, end_date, type } = req.body;
+  const {
+    description,
+    total_amount,
+    start_date,
+    end_date,
+    frequency,
+    advance_payment,
+  } = req.body;
 
-  if (!description || !total_amount || !start_date || !end_date || !type) {
+  if (!description || !total_amount || !start_date || !end_date || !frequency) {
     res.status(400).json({
       error:
         "Description, total amount, start date, end date and type are required",
@@ -83,7 +92,7 @@ export async function createPurchaseOrder(req: Request, res: Response) {
     return;
   }
 
-  if (type === "ONE_TIME") {
+  if (frequency === FREQUENCY.ONE_TIME) {
     if (start_date !== end_date) {
       res.status(400).json({
         error:
@@ -94,17 +103,17 @@ export async function createPurchaseOrder(req: Request, res: Response) {
   }
 
   try {
-    const existingPO = await db.get(
-      "SELECT * FROM purchase_order WHERE is_active = 1 AND vendor_id = ?",
-      [vendorId]
-    );
+    // const existingPO = await db.get(
+    //   "SELECT * FROM purchase_order WHERE is_active = 1 AND vendor_id = ?",
+    //   [vendorId]
+    // );
 
-    if (existingPO) {
-      res.status(400).json({
-        error: "There is already an active purchase order for this vendor",
-      });
-      return;
-    }
+    // if (existingPO) {
+    //   res.status(400).json({
+    //     error: "There is already an active purchase order for this vendor",
+    //   });
+    //   return;
+    // }
 
     // Calculate months between start and end date
     const startDate = new Date(start_date);
@@ -113,21 +122,45 @@ export async function createPurchaseOrder(req: Request, res: Response) {
       (endDate.getFullYear() - startDate.getFullYear()) * 12 +
       (endDate.getMonth() - startDate.getMonth());
 
-    const amount_per_month = total_amount / monthDiff;
+    const calculated_amount = total_amount - (advance_payment || 0);
+    const amount_per_month = calculated_amount / monthDiff;
+
+    if (advance_payment) {
+      const transaction_id = Date.now();
+
+      await insertJournalEntry({
+        account: ACCOUNT.ADVANCE_PAYMENT,
+        amount: advance_payment,
+        date: start_date,
+        description,
+        entry_type: "DEBIT",
+        transaction_id,
+        category: "ASSET",
+      });
+      await insertJournalEntry({
+        account: ACCOUNT.CASH_ACCOUNT,
+        amount: advance_payment,
+        date: start_date,
+        description,
+        entry_type: "CREDIT",
+        transaction_id,
+        category: "ASSET",
+      });
+    }
 
     // Insert new purchase order
     const id = await db.run(
       `INSERT INTO purchase_order 
-         (vendor_id, description, total_amount, start_date, end_date, amount_per_month, is_active, type) 
+         (vendor_id, description, total_amount, start_date, end_date, amount_per_month, is_active, frequency) 
          VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
       [
         vendorId,
         description,
-        total_amount,
+        calculated_amount,
         start_date,
         end_date,
         amount_per_month,
-        type,
+        frequency,
       ]
     );
 
@@ -140,7 +173,7 @@ export async function createPurchaseOrder(req: Request, res: Response) {
       end_date,
       amount_per_month,
       is_active: true,
-      type,
+      frequency,
     });
   } catch (err) {
     res

@@ -20,7 +20,6 @@ INSERT INTO purchase_order (
     'MONTHLY'
 );
 
--- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -35,11 +34,10 @@ INSERT INTO purchase_order (
     10000,
     '2025-01-01',
     '2025-12-31',
-     833,
+    833,
     'QUARTERLY'
 );
 
--- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -50,15 +48,13 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'PO-2',
+    'PO-3',
     10000,
     '2025-01-01',
     '2025-12-31',
-     833,
+    833,
     'MONTHLY'
 );
-
--- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -69,15 +65,14 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'PO-2',
+    'PO-3',
     10000,
     '2025-01-01',
     '2025-12-31',
-     833,
+    833,
     'BI_ANNUALLY'
 );
 
--- Insert purchase order
 INSERT INTO purchase_order (
     vendor_id,
     description,
@@ -88,10 +83,10 @@ INSERT INTO purchase_order (
     frequency
 ) VALUES (
     (SELECT id FROM vendor WHERE name = 'Microsoft'),
-    'PO-2',
+    'PO-3',
     10000,
     '2025-01-01',
     '2025-12-31',
-     833,
+    833,
     'ANNUALLY'
 );
