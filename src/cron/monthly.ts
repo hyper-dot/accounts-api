@@ -50,22 +50,68 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
       continue;
     }
 
+    // Get all prepaid journal entries for this PO
+    const prepaidEntries = await db.all(
+      `
+      SELECT * FROM journal_entry 
+      WHERE purchase_order_id = ? AND account = 'ADVANCE_PAYMENT'
+    `,
+      [po.id]
+    );
+
+    // Calculate remaining prepaid amount by summing credits (positive) and debits (negative)
+    const prepaidAmount = prepaidEntries.reduce((total, entry) => {
+      if (entry.entry_type === "DEBIT") {
+        return total + entry.amount;
+      } else {
+        return total - entry.amount;
+      }
+    }, 0);
+
     switch (po.frequency) {
       case FREQUENCY.ONE_TIME:
         // For one-time POs, check if we already have a journal entry
         const hasEntry = await hasJournalEntry(po.id);
         if (!hasEntry) {
           const transaction_id = Date.now();
-          await insertJournalEntry({
-            date: currentDateString,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: po.total_amount,
-            entry_type: "CREDIT",
-            description: `Accrual for PO ${po.id}`,
-            purchase_order_id: po.id,
-            category: "LIABILITY",
-          });
+          const actual_amount = po.total_amount;
+          const remainingAmount = actual_amount - prepaidAmount;
+
+          if (remainingAmount <= 0) {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: actual_amount,
+              entry_type: "CREDIT",
+              description: `Accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+          } else {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: prepaidAmount,
+              entry_type: "CREDIT",
+              description: `Paid for accrual of PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ACCRUED_LIABILITIES,
+              amount: remainingAmount,
+              entry_type: "CREDIT",
+              description: `Accrual of PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "LIABILITY",
+            });
+          }
+
           await insertJournalEntry({
             date: currentDateString,
             transaction_id,
@@ -82,6 +128,7 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
       case FREQUENCY.MONTHLY:
         const lastMonthlyInvoice = await getLastInvoice(po.id);
         const monthlyAmount = po.amount_per_month;
+        const monthlyRemainingAmount = monthlyAmount - prepaidAmount;
 
         if (
           !lastMonthlyInvoice ||
@@ -91,16 +138,42 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
           )
         ) {
           const transaction_id = Date.now();
-          await insertJournalEntry({
-            date: currentDateString,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: monthlyAmount,
-            entry_type: "CREDIT",
-            description: `Monthly accrual for PO ${po.id}`,
-            purchase_order_id: po.id,
-            category: "LIABILITY",
-          });
+
+          if (monthlyRemainingAmount <= 0) {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: monthlyAmount,
+              entry_type: "CREDIT",
+              description: `Monthly accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+          } else {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: prepaidAmount,
+              entry_type: "CREDIT",
+              description: `Paid for monthly accrual of PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ACCRUED_LIABILITIES,
+              amount: monthlyRemainingAmount,
+              entry_type: "CREDIT",
+              description: `Monthly accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "LIABILITY",
+            });
+          }
+
           await insertJournalEntry({
             date: currentDateString,
             transaction_id,
@@ -116,22 +189,49 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
 
       case FREQUENCY.QUARTERLY:
         const quarterlyAmount = Math.floor(po.total_amount / 4);
+        const quarterlyRemainingAmount = quarterlyAmount - prepaidAmount;
         const isQuarterMonth = [3, 6, 9, 12].includes(
           currentDateParsed.getMonth() + 1
         );
 
         if (isQuarterMonth) {
           const transaction_id = Date.now();
-          await insertJournalEntry({
-            date: currentDateString,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: quarterlyAmount,
-            entry_type: "CREDIT",
-            description: `Quarterly accrual for PO ${po.id}`,
-            purchase_order_id: po.id,
-            category: "LIABILITY",
-          });
+
+          if (quarterlyRemainingAmount <= 0) {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: quarterlyAmount,
+              entry_type: "CREDIT",
+              description: `Quarterly accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+          } else {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: prepaidAmount,
+              entry_type: "CREDIT",
+              description: `Paid for quarterly accrual of PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ACCRUED_LIABILITIES,
+              amount: quarterlyRemainingAmount,
+              entry_type: "CREDIT",
+              description: `Quarterly accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "LIABILITY",
+            });
+          }
+
           await insertJournalEntry({
             date: currentDateString,
             transaction_id,
@@ -147,22 +247,49 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
 
       case FREQUENCY.BI_ANNUALLY:
         const biAnnualAmount = Math.floor(po.total_amount / 2);
+        const biAnnualRemainingAmount = biAnnualAmount - prepaidAmount;
         const isBiAnnualMonth = [6, 12].includes(
           currentDateParsed.getMonth() + 1
         );
 
         if (isBiAnnualMonth) {
           const transaction_id = Date.now();
-          await insertJournalEntry({
-            date: currentDateString,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: biAnnualAmount,
-            entry_type: "CREDIT",
-            description: `Bi-annual accrual for PO ${po.id}`,
-            purchase_order_id: po.id,
-            category: "LIABILITY",
-          });
+
+          if (biAnnualRemainingAmount <= 0) {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: biAnnualAmount,
+              entry_type: "CREDIT",
+              description: `Bi-annual accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+          } else {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: prepaidAmount,
+              entry_type: "CREDIT",
+              description: `Paid for bi-annual accrual of PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ACCRUED_LIABILITIES,
+              amount: biAnnualRemainingAmount,
+              entry_type: "CREDIT",
+              description: `Bi-annual accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "LIABILITY",
+            });
+          }
+
           await insertJournalEntry({
             date: currentDateString,
             transaction_id,
@@ -178,20 +305,47 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
 
       case FREQUENCY.ANNUALLY:
         const annualAmount = po.total_amount;
+        const annualRemainingAmount = annualAmount - prepaidAmount;
         const isDecember = currentDateParsed.getMonth() + 1 === 12;
 
         if (isDecember) {
           const transaction_id = Date.now();
-          await insertJournalEntry({
-            date: currentDateString,
-            transaction_id,
-            account: ACCOUNT.ACCRUED_LIABILITIES,
-            amount: annualAmount,
-            entry_type: "CREDIT",
-            description: `Annual accrual for PO ${po.id}`,
-            purchase_order_id: po.id,
-            category: "LIABILITY",
-          });
+
+          if (annualRemainingAmount <= 0) {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: annualAmount,
+              entry_type: "CREDIT",
+              description: `Annual accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+          } else {
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ADVANCE_PAYMENT,
+              amount: prepaidAmount,
+              entry_type: "CREDIT",
+              description: `Paid for annual accrual of PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "ASSET",
+            });
+
+            await insertJournalEntry({
+              date: currentDateString,
+              transaction_id,
+              account: ACCOUNT.ACCRUED_LIABILITIES,
+              amount: annualRemainingAmount,
+              entry_type: "CREDIT",
+              description: `Annual accrual for PO ${po.id}`,
+              purchase_order_id: po.id,
+              category: "LIABILITY",
+            });
+          }
+
           await insertJournalEntry({
             date: currentDateString,
             transaction_id,

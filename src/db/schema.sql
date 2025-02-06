@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS purchase_order (
   vendor_id INTEGER,
   description TEXT,
   total_amount DECIMAL(10,2) NOT NULL,
+  advance_payment DECIMAL(10,2) NULL DEFAULT 0,
   start_date DATETIME NOT NULL,
   end_date DATETIME NOT NULL,
   amount_per_month DECIMAL(10,2) NOT NULL,
@@ -45,8 +46,8 @@ CREATE TABLE IF NOT EXISTS invoice (
   
   description TEXT NOT NULL,
   issued_date DATETIME NOT NULL,
-  service_date_start DATETIME NOT NULL,
-  service_date_end DATETIME NOT NULL,
+  service_date_start DATETIME NULL,
+  service_date_end DATETIME NULL,
   amount DECIMAL(10,2) NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('PAID', 'UNPAID', 'PARTIAL_PAID')),
 

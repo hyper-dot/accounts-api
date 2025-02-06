@@ -42,191 +42,6 @@ export async function getInvoicesByVendorId(req: Request, res: Response) {
   }
 }
 
-// export async function createInvoiceForVendor(req: Request, res: Response) {
-//   const { description, issued_date, amount, service_date, status } = req.body;
-//   const vendorId = req.params.vendor_id;
-
-//   if (!description || !issued_date || !amount || !service_date || !status) {
-//     res.status(400).json({
-//       error:
-//         "description, issued_date, service_date, amount and status are required",
-//     });
-//     return;
-//   }
-
-//   // First check purchase order
-//   try {
-//     const purchaseOrder = await getPurchaseOrderByVendor(vendorId);
-//     if (!purchaseOrder) {
-//       res
-//         .status(404)
-//         .json({ error: "No active purchase order found for vendor" });
-//       return;
-//     }
-
-//     // Check if service date falls within purchase order period
-//     const poStartDate = new Date(purchaseOrder.start_date);
-//     const poEndDate = new Date(purchaseOrder.end_date);
-//     const serviceDate = new Date(service_date);
-
-//     if (
-//       isBefore(serviceDate, poStartDate) ||
-//       isBefore(poEndDate, serviceDate)
-//     ) {
-//       res.status(400).json({
-//         error: "Service date must be within purchase order period",
-//       });
-//       return;
-//     }
-
-//     // Check if vendor exists
-//     const vendor = await getVendorById(vendorId);
-//     if (!vendor) {
-//       res.status(404).json({ error: "Vendor not found" });
-//       return;
-//     }
-
-//     const transaction_id = Date.now();
-//     const ACTUAL_AMOUNT = amount;
-//     const currentDate = new Date("2025-02-27");
-
-//     // Check if invoice already exists for the service date
-//     const existingInvoice = await db.get(
-//       "SELECT * FROM invoice WHERE service_date = ? AND purchase_order_id = ?",
-//       [service_date, purchaseOrder.id]
-//     );
-
-//     if (existingInvoice) {
-//       res.status(400).json({
-//         error:
-//           "An invoice already exists for this service date and purchase order",
-//       });
-//       return;
-//     }
-
-//     const invoice_id = await insertInvoiceReturningId({
-//       description,
-//       issued_date,
-//       service_date,
-//       amount,
-//       status,
-//       purchase_order_id: purchaseOrder.id,
-//     });
-
-//     // Get the monthly amount from purchase order
-//     const monthlyAmount = purchaseOrder.amount_per_month;
-//     const isPreviousMonth = isSameMonth(serviceDate, subMonths(currentDate, 1));
-
-//     // Handle previous month entries differently
-//     if (isPreviousMonth) {
-//       console.log("Previous month");
-
-//       // 1. Reverse the original accrual
-//       await insertJournalEntry({
-//         date: service_date,
-//         transaction_id,
-//         account: ACCOUNT.ACCRUED_LIABILITIES,
-//         amount: monthlyAmount,
-//         description: `Reversing accrual for (${description})`,
-//         invoice_id,
-//         category: "LIABILITY",
-//         entry_type: "DEBIT",
-//       });
-
-//       await insertJournalEntry({
-//         date: service_date,
-//         transaction_id,
-//         account: ACCOUNT.EXPENSE_ACCOUNT,
-//         amount: monthlyAmount,
-//         description: `Reversing accrual for (${description})`,
-//         invoice_id,
-//         category: "EXPENSE",
-//         entry_type: "CREDIT",
-//       });
-
-//       // 2. Record the actual expense
-//       await insertJournalEntry({
-//         date: service_date,
-//         transaction_id,
-//         account: ACCOUNT.EXPENSE_ACCOUNT,
-//         amount: ACTUAL_AMOUNT,
-//         description,
-//         invoice_id,
-//         category: "EXPENSE",
-//         entry_type: "DEBIT",
-//       });
-
-//       if (status === "PAID") {
-//         await insertJournalEntry({
-//           date: service_date,
-//           transaction_id,
-//           account: ACCOUNT.CASH_ACCOUNT,
-//           amount: ACTUAL_AMOUNT,
-//           description,
-//           invoice_id,
-//           category: "ASSET",
-//           entry_type: "CREDIT",
-//         });
-//       } else {
-//         await insertJournalEntry({
-//           date: service_date,
-//           transaction_id,
-//           account: ACCOUNT.ACCOUNTS_PAYABLE,
-//           amount: ACTUAL_AMOUNT,
-//           description,
-//           invoice_id,
-//           category: "LIABILITY",
-//           entry_type: "CREDIT",
-//         });
-//       }
-//     } else {
-//       // Current month entries (existing logic)
-//       console.log("Current month");
-
-//       if (status === "PAID") {
-//         await insertJournalEntry({
-//           date: service_date,
-//           transaction_id,
-//           account: ACCOUNT.CASH_ACCOUNT,
-//           amount: ACTUAL_AMOUNT,
-//           description,
-//           invoice_id,
-//           category: "ASSET",
-//           entry_type: "CREDIT",
-//         });
-//       } else {
-//         await insertJournalEntry({
-//           date: service_date,
-//           transaction_id,
-//           account: ACCOUNT.ACCOUNTS_PAYABLE,
-//           amount: ACTUAL_AMOUNT,
-//           description,
-//           invoice_id,
-//           category: "LIABILITY",
-//           entry_type: "CREDIT",
-//         });
-//       }
-
-//       await insertJournalEntry({
-//         date: service_date,
-//         transaction_id,
-//         account: ACCOUNT.EXPENSE_ACCOUNT,
-//         amount: ACTUAL_AMOUNT,
-//         entry_type: "DEBIT",
-//         description,
-//         invoice_id,
-//         category: "EXPENSE",
-//       });
-//     }
-
-//     res.json({ message: "Inserted invoice successfully !!" });
-//   } catch (err) {
-//     res
-//       .status(500)
-//       .json({ error: err instanceof Error ? err.message : "Unknown error" });
-//   }
-// }
-
 export async function createInvoiceForPO(req: Request, res: Response) {
   const {
     description,
@@ -530,4 +345,65 @@ export async function makePayment(req: Request, res: Response) {
   }
 
   res.json({ message: "Amount paid successfully !!" });
+}
+
+export async function createAdvancePayment(req: Request, res: Response) {
+  const { po_id } = req.params;
+
+  if (isNaN(parseInt(po_id))) {
+    res.status(400).json({ error: "Invalid purchase order ID" });
+    return;
+  }
+
+  const { description, issued_date, amount, status } = req.body;
+  if (!description || !issued_date || !amount || !status) {
+    res.status(400).json({
+      error: "description, issued_date, amount and status are required",
+    });
+    return;
+  }
+
+  const po = await db.get("SELECT * FROM purchase_order WHERE id = ?", [po_id]);
+
+  if (!po) {
+    res.status(404).json({ error: "Purchase order not found" });
+    return;
+  }
+
+  const invoiceId = await insertInvoiceReturningId({
+    description,
+    issued_date,
+    amount,
+    status,
+    purchase_order_id: po.id,
+  });
+
+  const transaction_id = Date.now();
+  const date = new Date().toISOString().split("T")[0];
+
+  await insertJournalEntry({
+    invoice_id: invoiceId,
+    amount: amount,
+    account: ACCOUNT.CASH_ACCOUNT,
+    entry_type: "CREDIT",
+    description: `Advance payment for invoice (${description})`,
+    date,
+    transaction_id,
+    category: "ASSET",
+    purchase_order_id: Number(po_id),
+  });
+
+  await insertJournalEntry({
+    invoice_id: invoiceId,
+    amount: amount,
+    account: ACCOUNT.ADVANCE_PAYMENT,
+    entry_type: "DEBIT",
+    description: `Advance payment for invoice (${description})`,
+    date,
+    transaction_id,
+    category: "ASSET",
+    purchase_order_id: Number(po_id),
+  });
+
+  res.json({ message: "Advance payment created successfully" });
 }
