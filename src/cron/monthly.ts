@@ -5,18 +5,18 @@ import { insertJournalEntry } from "../db/service";
 import { format, isAfter, parseISO } from "date-fns";
 import { isBefore } from "date-fns";
 
-// Run at midnight (00:00) on the first day of every month
-cron.schedule("0 0 1 * *", async () => {
-  try {
-    console.log("Starting monthly cron job...");
+// // Run at midnight (00:00) on the first day of every month
+// cron.schedule("0 0 1 * *", async () => {
+//   try {
+//     console.log("Starting monthly cron job...");
 
-    await monthlyCronJob();
+//     await monthlyCronJob();
 
-    console.log("Monthly cron job completed successfully");
-  } catch (error) {
-    console.error("Error in monthly cron job:", error);
-  }
-});
+//     console.log("Monthly cron job completed successfully");
+//   } catch (error) {
+//     console.error("Error in monthly cron job:", error);
+//   }
+// });
 
 export const monthlyCronJob = async (currentDate: Date = new Date()) => {
   const currentDateString = format(currentDate, "yyyy-MM-dd");
@@ -89,16 +89,18 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
               category: "ASSET",
             });
           } else {
-            await insertJournalEntry({
-              date: currentDateString,
-              transaction_id,
-              account: ACCOUNT.ADVANCE_PAYMENT,
-              amount: prepaidAmount,
-              entry_type: "CREDIT",
-              description: `Paid for accrual of PO ${po.id}`,
-              purchase_order_id: po.id,
-              category: "ASSET",
-            });
+            if (prepaidAmount > 0) {
+              await insertJournalEntry({
+                date: currentDateString,
+                transaction_id,
+                account: ACCOUNT.ADVANCE_PAYMENT,
+                amount: prepaidAmount,
+                entry_type: "CREDIT",
+                description: `Paid for accrual of PO ${po.id}`,
+                purchase_order_id: po.id,
+                category: "ASSET",
+              });
+            }
 
             await insertJournalEntry({
               date: currentDateString,
@@ -130,6 +132,8 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
         const monthlyAmount = po.amount_per_month;
         const monthlyRemainingAmount = monthlyAmount - prepaidAmount;
 
+        console.log({ monthlyAmount, monthlyRemainingAmount, prepaidAmount });
+
         if (
           !lastMonthlyInvoice ||
           isBefore(
@@ -151,16 +155,18 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
               category: "ASSET",
             });
           } else {
-            await insertJournalEntry({
-              date: currentDateString,
-              transaction_id,
-              account: ACCOUNT.ADVANCE_PAYMENT,
-              amount: prepaidAmount,
-              entry_type: "CREDIT",
-              description: `Paid for monthly accrual of PO ${po.id}`,
-              purchase_order_id: po.id,
-              category: "ASSET",
-            });
+            if (prepaidAmount > 0) {
+              await insertJournalEntry({
+                date: currentDateString,
+                transaction_id,
+                account: ACCOUNT.ADVANCE_PAYMENT,
+                amount: prepaidAmount,
+                entry_type: "CREDIT",
+                description: `Paid for monthly accrual of PO ${po.id}`,
+                purchase_order_id: po.id,
+                category: "ASSET",
+              });
+            }
 
             await insertJournalEntry({
               date: currentDateString,
@@ -209,16 +215,18 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
               category: "ASSET",
             });
           } else {
-            await insertJournalEntry({
-              date: currentDateString,
-              transaction_id,
-              account: ACCOUNT.ADVANCE_PAYMENT,
-              amount: prepaidAmount,
-              entry_type: "CREDIT",
-              description: `Paid for quarterly accrual of PO ${po.id}`,
-              purchase_order_id: po.id,
-              category: "ASSET",
-            });
+            if (prepaidAmount > 0) {
+              await insertJournalEntry({
+                date: currentDateString,
+                transaction_id,
+                account: ACCOUNT.ADVANCE_PAYMENT,
+                amount: prepaidAmount,
+                entry_type: "CREDIT",
+                description: `Paid for quarterly accrual of PO ${po.id}`,
+                purchase_order_id: po.id,
+                category: "ASSET",
+              });
+            }
 
             await insertJournalEntry({
               date: currentDateString,
@@ -267,16 +275,18 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
               category: "ASSET",
             });
           } else {
-            await insertJournalEntry({
-              date: currentDateString,
-              transaction_id,
-              account: ACCOUNT.ADVANCE_PAYMENT,
-              amount: prepaidAmount,
-              entry_type: "CREDIT",
-              description: `Paid for bi-annual accrual of PO ${po.id}`,
-              purchase_order_id: po.id,
-              category: "ASSET",
-            });
+            if (prepaidAmount > 0) {
+              await insertJournalEntry({
+                date: currentDateString,
+                transaction_id,
+                account: ACCOUNT.ADVANCE_PAYMENT,
+                amount: prepaidAmount,
+                entry_type: "CREDIT",
+                description: `Paid for bi-annual accrual of PO ${po.id}`,
+                purchase_order_id: po.id,
+                category: "ASSET",
+              });
+            }
 
             await insertJournalEntry({
               date: currentDateString,
@@ -323,16 +333,18 @@ export const monthlyCronJob = async (currentDate: Date = new Date()) => {
               category: "ASSET",
             });
           } else {
-            await insertJournalEntry({
-              date: currentDateString,
-              transaction_id,
-              account: ACCOUNT.ADVANCE_PAYMENT,
-              amount: prepaidAmount,
-              entry_type: "CREDIT",
-              description: `Paid for annual accrual of PO ${po.id}`,
-              purchase_order_id: po.id,
-              category: "ASSET",
-            });
+            if (prepaidAmount > 0) {
+              await insertJournalEntry({
+                date: currentDateString,
+                transaction_id,
+                account: ACCOUNT.ADVANCE_PAYMENT,
+                amount: prepaidAmount,
+                entry_type: "CREDIT",
+                description: `Paid for annual accrual of PO ${po.id}`,
+                purchase_order_id: po.id,
+                category: "ASSET",
+              });
+            }
 
             await insertJournalEntry({
               date: currentDateString,
@@ -383,10 +395,27 @@ const getLastInvoice = async (poId: number) => {
   );
 };
 
-const getMonthsDifference = (startDate: Date, endDate: Date): number => {
-  return (
-    (endDate.getFullYear() - startDate.getFullYear()) * 12 +
-    endDate.getMonth() -
-    startDate.getMonth()
-  );
-};
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  if (args.length !== 1) {
+    console.error("Please provide a date argument in YYYY-MM-DD format");
+    process.exit(1);
+  }
+
+  const dateArg = args[0];
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(dateArg)) {
+    console.error("Date must be in YYYY-MM-DD format");
+    process.exit(1);
+  }
+
+  monthlyCronJob(new Date(dateArg))
+    .then(() => {
+      console.log("Monthly cron job completed successfully");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("Error running monthly cron job:", error);
+      process.exit(1);
+    });
+}
